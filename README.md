@@ -6,11 +6,20 @@ Convert Knack applications to a PostgreSQL database.
 
 *If you want to use the `Loader` class to actually load data to a Postgres database, you'll need to install [`psycopg2`](https://pypi.org/project/psycopg2/) manually. Because of installation headaches, it is not installed automatically.*
 
-1. Clone this repo: `$ git clone http://github.com/cityofaustin/knack-to-postgres`
+1. Clone this repo
 
-2. Install the libary: `$ pip install knack-to-postgres`
+```bash
+$ git clone http://github.com/cityofaustin/knack-to-postgres
+```
+
+2. Install the library
+```bash
+$ pip install knack-to-postgres
+```
 
 ## Usage
+
+*If you're new to Knack + Python, [Knackpy](https://github.com/cityofaustin/knackpy) is a good way to explore the API.*
 
 ### Convert your App to PostgreSQL
 
