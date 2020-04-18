@@ -11,6 +11,7 @@ from knackpy import get_app_data
 from .constants import EXCLUDED_TYPES, TAB
 from .utils import *
 
+
 class App:
     """
     Knack application wrapper. Stores app meta data, tables, fields, etc.
@@ -51,24 +52,16 @@ class App:
 
         print(self)
 
-
     def to_sql(self, path="sql"):
-        
+
         for table in self.tables:
             self._write_sql(table.sql, path, "tables", table.name)
 
         for rel in self.sql_relationships:
             self._write_sql(rel["sql"], path, "relationships", rel["name"])
 
-    def _write_sql(
-        self,
-        sql,
-        path,
-        subdir,
-        name_attr,
-        method="w"
-        ):
-    
+    def _write_sql(self, sql, path, subdir, name_attr, method="w"):
+
         file_path = Path(path) / subdir
 
         file_path.mkdir(exist_ok=True, parents=True)
@@ -343,7 +336,9 @@ class Table:
         return fields
 
     def to_sql(self):
-        fields = [field.sql for field in self.fields if field.type_knack not in EXCLUDED_TYPES]
+        fields = [
+            field.sql for field in self.fields if field.type_knack not in EXCLUDED_TYPES
+        ]
         field_sql = f",\n{TAB}".join(fields)
 
         return f"""CREATE TABLE IF NOT EXISTS {self.name_postgres} (\n{TAB}{field_sql}\n);\n\n"""
@@ -428,15 +423,19 @@ class FieldDef:
             self.data_type = "BOOLEAN"
 
         self._handle_rules()
-            
+
         self.sql = self._to_sql()
 
     def _set_default(self):
-        
+
         if not hasattr(self, "default_knack"):
             return None
 
-        elif self.default_knack == "kn-blank" or self.default_knack == "" or self.default_knack == None:
+        elif (
+            self.default_knack == "kn-blank"
+            or self.default_knack == ""
+            or self.default_knack == None
+        ):
             return None
 
         else:
@@ -445,7 +444,6 @@ class FieldDef:
                 return int(self.default_knack)
             except ValueError:
                 return self.default_knack
-
 
     def _handle_rules(self):
         # SOMEDAY!
@@ -531,11 +529,10 @@ def connect():
     conn_string = "host='localhost' dbname='postgres' user='postgres' password='pizza'"
     conn = psycopg2.connect(conn_string)
     cursor = conn.cursor()
-    
-    
-    with open('data/signals.csv', "r") as fin:
+
+    with open("data/signals.csv", "r") as fin:
         reader = csv.reader(fin)
         fieldnames = next(reader)
-        cursor.copy_from(fin, 'signals', columns=fieldnames, sep=",")
+        cursor.copy_from(fin, "signals", columns=fieldnames, sep=",")
         conn.commit()
         conn.close()

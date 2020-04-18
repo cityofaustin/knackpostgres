@@ -16,7 +16,6 @@ class Translator:
         self.knack.data_raw = self._replace_raw_fieldnames()
         self.records = self._translate_records()
         self.records = self._convert_fieldnames()
-    
 
     def _drop_forbidden_fields(self):
 
@@ -27,7 +26,7 @@ class Translator:
         ]
 
     def _drop_excluded_fields(self):
-        
+
         new_records = []
 
         for record in self.knack.data_raw:
@@ -74,7 +73,6 @@ class Translator:
                     # field will be dropped
                     continue
 
-                
                 try:
                     translated_record[field] = handler.handle(record[field])
 
@@ -166,21 +164,20 @@ class Translator:
 
         return new_records
 
-    
     def to_csv(self, path="data"):
-            
+
         path = Path.cwd() / path
         path.mkdir(exist_ok=True)
         fname = path / (self.table.name + ".csv")
-        
+
         with open(fname, "w") as fout:
 
             fieldnames = [field for field in self.records[0].keys()]
 
             writer = csv.DictWriter(fout, fieldnames=fieldnames)
-            
+
             writer.writeheader()
-            
+
             for record in self.records:
                 writer.writerow(record)
 

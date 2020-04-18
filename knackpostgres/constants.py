@@ -1,3 +1,11 @@
-EXCLUDED_TYPES = ["password", "max", "min", "count", "average", "concatenation", "connection"]
+EXCLUDED_TYPES = [
+    "password",
+    "max",
+    "min",
+    "count",
+    "average",
+    "concatenation",
+    "connection",
+]
 
 TAB = "    "
