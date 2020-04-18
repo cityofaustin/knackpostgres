@@ -1,6 +1,7 @@
 """
 Convert a Knack application to a PostgreSQL Database.
 """
+import logging
 from pathlib import Path
 from pprint import pprint as print
 import pdb
@@ -53,21 +54,29 @@ class App:
 
     def to_sql(self, path="sql"):
         
-        path = Path.cwd() / path
-        path.mkdir(exist_ok=True)
+        for table in self.tables:
+            self._write_sql(table.sql, path, "tables", table.name)
 
-        with open(path / "tables.sql", "w") as fout:
-            for table in self.tables:
-                fout.write(table.sql)
-                print(table)
+        for rel in self.sql_relationships:
+            self._write_sql(rel["sql"], path, "relationships", rel["name"])
 
-        with open(path / "relationships.sql", "w") as fout:
-            for statement in self.sql_relationships:
-                fout.write(statement)
-            print(f"{len(self.sql_relationships)} relationships written.")
+    def _write_sql(
+        self,
+        sql,
+        path,
+        subdir,
+        name_attr,
+        method="w"
+        ):
+    
+        file_path = Path(path) / subdir
 
-        return None
+        file_path.mkdir(exist_ok=True, parents=True)
 
+        file_path = file_path / f"{name_attr}.sql"
+
+        with open(file_path, method) as fout:
+            fout.write(sql)
 
     def _get_app_data(self):
         return get_app_data(self.app_id)
@@ -79,13 +88,17 @@ class App:
         statements = []
 
         for rel in self.relationships:
+            statement = {"name": rel["name"]}
+
             if rel["type"] == "one_to_many":
                 sql = self._one_to_many_statement(rel)
-                statements.append(sql)
+                statement.update({"sql": sql})
 
             elif rel["type"] == "many_to_many":
                 sql = self._many_to_many_statement(rel)
-                statements.append(sql)
+                statement.update({"sql": sql})
+
+            statements.append(statement)
 
         return statements
 
@@ -139,13 +152,16 @@ class App:
             for conn_field in connection_fields:
                 rel_obj = conn_field.relationship_knack["object"]
                 rel_table_name = obj_lookup[rel_obj]
+                rel_name = f"{table.name_postgres}_{rel_table_name}"
+
+                rel = {"name": rel_name}
 
                 if (
                     conn_field.relationship_knack["has"] == "one"
                     and conn_field.relationship_knack["belongs_to"] == "many"
                 ):
                     # one-to-many relationship
-                    app_relationships.append(
+                    rel.update(
                         {
                             "field_key_knack": conn_field.key_knack,
                             "parent_field_name": f"{rel_table_name}_id",
@@ -162,7 +178,7 @@ class App:
                     # many-to-one relationship
                     # this is an artefact of knack relationships.
                     # in postgres one-to-many and many-to-one are the same (i think...todo)
-                    app_relationships.append(
+                    rel.update(
                         {
                             "field_key_knack": conn_field.key_knack,
                             "parent_field_name": f"{table.name_postgres}_id",
@@ -175,7 +191,7 @@ class App:
                 else:
                     # many-to-many
                     # see: https://stackoverflow.com/questions/9789736/how-to-implement-a-many-to-many-relationship-in-postgresql
-                    app_relationships.append(
+                    rel.update(
                         {
                             "field_key_knack": conn_field.key_knack,
                             "child": rel_table_name,
@@ -183,6 +199,8 @@ class App:
                             "type": "many_to_many",  # many parents to many children
                         }
                     )
+
+                app_relationships.append(rel)
 
         return app_relationships
 
