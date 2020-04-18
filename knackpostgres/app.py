@@ -14,8 +14,15 @@ class App:
     """
     Knack application wrapper. Stores app meta data, tables, fields, etc.
     
-    Input is a Knack application ID. Outputs to "app.sql", a series of postgresql statements which
-    create tables, relationships etc.
+    Receives a Knack application ID string and returns App instance.
+
+    On instanciation, will fetch app metadata and prepare output SQL statements.
+
+    Usage:
+
+    >>> `app = App("myappid")`
+    >>> app.to_sql()   # write to /sql dir
+
     """
 
     def __repr__(self):
