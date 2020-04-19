@@ -39,5 +39,6 @@ FIELD_DEFINITIONS = {
     "user_roles": {"type_postgres": "JSON"},
     "boolean": {"type_postgres": "BOOLEAN"},
     "connection": {"type_postgres": None},
+    "_knack_id" : {"type_postgres": "TEXT"},
     "_pg_primary_key": {"type_postgres": "SERIAL"},
 }
