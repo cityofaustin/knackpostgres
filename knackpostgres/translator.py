@@ -2,7 +2,7 @@ import csv
 from pathlib import Path
 
 from .constants import EXCLUDED_TYPES
-from .handler import Handler
+from .handler_data import DataHandler
 
 
 class Translator:
@@ -65,9 +65,9 @@ class Translator:
                     # which is fine, we skip them
                     continue
 
-                # use the Handler to translate the data based on field type
+                # use the DataHandler to translate the data based on field type
                 try:
-                    handler = Handler(field_type)
+                    handler = DataHandler(field_type)
                 except ValueError:
                     # a handler has been explicitly NOT defined for this field type
                     # field will be dropped

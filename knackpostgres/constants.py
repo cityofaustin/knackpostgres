@@ -9,3 +9,35 @@ EXCLUDED_TYPES = [
 ]
 
 TAB = "    "
+
+FIELD_DEFINITIONS = {
+    "short_text": {"type_postgres": "TEXT"},
+    "pargraph_text": {"type_postgres": "TEXT"},
+    "phone": {"type_postgres": "TEXT"},
+    "link": {"type_postgres": "TEXT"},
+    "multiple_choice": {"type_postgres": "TEXT"},
+    "rich_text": {"type_postgres": "TEXT"},
+    "file": {"type_postgres": "TEXT"},
+    "image": {"type_postgres": "TEXT"},
+    "email": {"type_postgres": "TEXT"},
+    "signature": {"type_postgres": "TEXT"},
+    "password": {"type_postgres": "TEXT"},
+    "concatenation": {"type_postgres": None},
+    "count": {"type_postgres": None},
+    "max": {"type_postgres": None},
+    "min": {"type_postgres": None},
+    "sum": {"type_postgres": None},
+    "average": {"type_postgres": None},
+    "date_time": {"type_postgres": "TIMESTAMP WITH TIME ZONE"},
+    "timer": {"type_postgres": "TIMESTAMP WITH TIME ZONE"},
+    "number": {"type_postgres": "NUMERIC"},
+    "currency": {"type_postgres": "NUMERIC"},
+    "auto_increment": {"type_postgres": "NUMERIC"},
+    "rating": {"type_postgres": "NUMERIC"},
+    "address": {"type_postgres": "JSON"},
+    "name": {"type_postgres": "JSON"},
+    "user_roles": {"type_postgres": "JSON"},
+    "boolean": {"type_postgres": "BOOLEAN"},
+    "connection": {"type_postgres": None},
+    "_pg_primary_key": {"type_postgres": "SERIAL"},
+}

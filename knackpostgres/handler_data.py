@@ -1,7 +1,7 @@
 from .constants import EXCLUDED_TYPES
 
 
-class Handler:
+class DataHandler:
     def __repr__(self):
         return f"<Handler type=`{self.type}` name=`{self.handler.__name__}`>"
 
