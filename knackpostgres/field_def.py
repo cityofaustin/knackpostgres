@@ -102,7 +102,7 @@ class FieldDef:
         constraints = " ".join(self.constraints) if self.constraints else ""
 
         return (
-            f"{pk} {self.name_postgres} {self.data_type} {default}{constraints}".strip()
+            f"{self.name_postgres} {self.data_type} {pk} {default}{constraints}".strip()
         )
 
     def _handle_date(self):
