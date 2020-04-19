@@ -10,9 +10,13 @@ class FieldDef:
     def __repr__(self):
         return f"<FieldDef {self.name_postgres}> ({self.type_knack})"
 
-    def __init__(self, data):
-        self.primary_key = False
-        self.constraints = None
+    def __init__(self, data, primary_key=False):
+        """
+        No knack field is used as a primary key. 
+        We generate a primary key field while handling each table, during
+        which we set primary_key = `True`
+        """
+        self.primary_key = primary_key
 
         for key in data:
             setattr(self, key + "_knack", data[key])
@@ -39,22 +43,15 @@ class FieldDef:
             raise AttributeError(f"Unsupported knack type: {type_knack}")
 
     def _set_default(self):
-        # all knack field objects have a "DEFAULT" key, possibly empty
-        return "Hello"
-        # # TODO: inspect the type of default each type has
-        # if self.default_knack != None:
-        #     print(self.type_knack)
-        #     print(self.default_knack)
-        #     print(type(self.default_knack))
 
-        # return None
+        if not hasattr(self, "default_knack"):
+            return None
 
-        # if True:
-        #     try:
-        #         # handle string-quoted number defaults
-        #         return int(self.default_knack)
-        #     except ValueError:
-        #         return self.default_knack
+        if self.default_knack == "":
+            return None
+
+        else:
+            return self.default_knack
 
     def _handle_rules(self):
         # SOMEDAY!
@@ -72,23 +69,27 @@ class FieldDef:
         if self.unique_knack:
             constraints.append("UNIQUE")
 
-        return constraints
+        return constraints if constraints else None
 
     def _format_default(self):
 
+        default = self.default_postgres
+
         # i must be missing something, but an inline if was not properly handling an empty string string
-        if self.default_postgres:
-            default = self.default_postgres
-        else:
-            return " "
+        if default == None:
+            return ""
 
-        try:
-            # just in case a default val contains a single quote
+        elif type(default) == bool:
+            default = str(default).upper()
+
+        elif self.data_type == "NUMERIC":
+            # knack provides numeric defaults as strings :/
+            default = float(default)
+
+        elif type(default) == str:
+            # escape any single quotes
             default = default.replace("'", "\\'")
-        except AttributeError:
-            pass
-
-        default = str(default).upper() if type(default) == bool else f"'{default}'"
+            default = f"'{default}'"
 
         return f"DEFAULT {default} "
 
