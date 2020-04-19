@@ -54,7 +54,12 @@ class App:
         logging.info(self)
 
     def to_sql(self, path="sql"):
+        """
+        Write application SQL commands to file.
 
+        Alternatively, use the `Loader` class to connect/write directly
+        from the `App` class.
+        """
         for table in self.tables:
             self._write_sql(table.sql, path, "tables", table.name)
 
