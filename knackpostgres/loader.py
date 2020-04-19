@@ -1,15 +1,25 @@
-import csv
+import logging
+
 import psycopg2
 
 
-def connect():
-    conn_string = "host='localhost' dbname='postgres' user='postgres' password='pizza'"
-    conn = psycopg2.connect(conn_string)
-    cursor = conn.cursor()
+class Loader:
+    """ Wrapper for executing Knack applicaton SQL commands """
 
-    with open("data/signals.csv", "r") as fin:
-        reader = csv.reader(fin)
-        fieldnames = next(reader)
-        cursor.copy_from(fin, "signals", columns=fieldnames, sep=",")
-        conn.commit()
-        conn.close()
+    def __repr__(self):
+        return f"<Loader {self.app.name}>"
+
+    def __init__(self, app):
+        self.app = app
+
+    def connect(
+        self, host="localhost", dbname="postgres", user="postgres", password=None
+    ):
+        if not password:
+            raise AttributeError("`password` is required to connect.")
+
+        self.conn = psycopg2.connect(
+            host=host, dbname=dbname, user=user, password=password
+        )
+        logging.info(f"Connected to <{dbname}> as <{user}> at {host}")
+        return self.conn
