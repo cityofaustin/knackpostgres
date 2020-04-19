@@ -60,7 +60,7 @@ class Table:
             "unique": True,
             "name": "knack_id",
             "key": "knack_id",
-            "type": "short_text",  # todo: we'll have to map knack record "id" value to this field
+            "type": "_knack_id",  # todo: we'll have to map knack record "id" value to this field
         }
 
         return FieldDef(knack_id)
@@ -73,7 +73,6 @@ class Table:
             "name": "id",
             "key": "id",
             "type": "_pg_primary_key",  # todo: we'll have to map knack record IDs to this new serial
-            "primary_key": True,
         }
 
-        return FieldDef(pk)
+        return FieldDef(pk, primary_key=True)
