@@ -26,6 +26,6 @@ def valid_pg_name(original_name):
     forbidden_names = ["user", "default", "unique"]
 
     if new_name in forbidden_names:
-        new_name = f"_{original_name}"
+        new_name = f"_{new_name}"
 
     return new_name, original_name
