@@ -6,7 +6,7 @@ Convert Knack applications to a PostgreSQL database.
 
 ## Installation
 
-*If you want to use the `Loader` class to load data to a Postgres database, you'll need to install [`psycopg2`](https://pypi.org/project/psycopg2/) manually. Because of installation headaches, it is not automatically.*
+*If you want to use the `Loader` class to load data to a Postgres database, you'll need to install [`psycopg2`](https://pypi.org/project/psycopg2/) manually. Because of installation headaches, it is not installed automatically.*
 
 1. Clone this repo
 
@@ -31,13 +31,14 @@ $ pip install knackpostgres
 ```python
 >>> from knackpostgres import App
 
+# find your app id: https://www.knack.com/developer-documentation/#find-your-api-key-amp-application-id
 >>> app = App("myappidstring")
 ```
 
 If you want to execute the SQL commandsd manually, you can write to the entire App's SQL commands to files:
 
 ```python
->>> app.to_sql(path="mypath") # writes statements to /sql directory
+>>> app.to_sql(path="mypath") # writes statements to mypath/sql directory
 ```
 
 Alternatively, you can use the `Loader` class to execute your app's SQL. Read on...
@@ -49,7 +50,7 @@ If you're in need of a postgresql database for development. Consider the [offici
 To start your database with the default username (`postgres`), start the database in a new container:
 
 ```bash
-$ docker run -p 5432:5432 --name my-db-name -e POSTGRES_PASSWORD=my_password -d postgres
+$ docker run -p 5432:5432 --name postgres -e POSTGRES_PASSWORD=my_password -d my-db-name
 ```
 
 If you want to explore the database with `psql`, open a separate terminal window and run
@@ -65,7 +66,9 @@ docker run -it --rm --network host my-db-name psql -h localhost -U postgres
 Pass your `App` to a new `Loader` instance.
 
 ```python
->>> from knackpostgres import Loader
+>>> from knackpostgres import App, Loader
+
+>>> app = App("myappidstring")
 
 # ! This will overwrite the destination DB schema !
 >>> loader = Loader(app, overwrite=True)
@@ -81,7 +84,7 @@ Connect to your database:
     password="myunguessabledatabasepassword" )
 ```
 
-Execute your `App`'s' sql commands:
+Execute your `App`'s sql commands:
 
 ```python
 >>> loader.create_tables()
