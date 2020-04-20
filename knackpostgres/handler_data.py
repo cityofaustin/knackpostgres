@@ -1,14 +1,9 @@
-from .constants import EXCLUDED_TYPES
-
-
 class DataHandler:
+    """ Translate Knack record values to destination DB values """
     def __repr__(self):
         return f"<Handler type=`{self.type}` name=`{self.handler.__name__}`>"
 
     def __init__(self, field_type):
-
-        if field_type in EXCLUDED_TYPES:
-            raise ValueError(f"Forbidden field type: {field_type}")
 
         self.type = field_type
 

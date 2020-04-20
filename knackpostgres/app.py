@@ -8,7 +8,7 @@ import pdb
 
 from knackpy import get_app_data
 
-from .constants import EXCLUDED_TYPES, TAB
+from .constants import TAB
 from .table import Table
 from .utils import valid_pg_name
 

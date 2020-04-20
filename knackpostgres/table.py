@@ -1,6 +1,6 @@
 from .field_def import FieldDef
 from .utils import valid_pg_name
-from .constants import EXCLUDED_TYPES, TAB
+from .constants import TAB
 
 
 class Table:
