@@ -1,5 +1,4 @@
 import logging
-import pdb
 
 import psycopg2
 
@@ -40,8 +39,8 @@ class Loader:
 
     def create_relationships(self):
         with self.conn.cursor() as cursor:
-            for rel in self.app.sql_relationships:
-                self._execute_sql(cursor, rel["sql"], rel["name"])
+            for rel in self.app.relationships:
+                self._execute_sql(cursor, rel.sql, rel.name)
 
     def _execute_sql(self, cursor, sql, name):
         try:

@@ -10,6 +10,7 @@ from knackpy import get_app_data
 
 from .constants import TAB
 from .table import Table
+from .relationship import Relationship
 from .utils import valid_pg_name
 
 
@@ -44,9 +45,9 @@ class App:
 
         self.tables = self._handle_tables()
 
-        self.relationships = self._handle_relationships()
+        self.obj_lookup = self._generate_obj_lookup()
 
-        self.sql_relationships = self._generate_relationship_sql()
+        self.relationships = self._create_relationships()
 
         # creates a "formula" key inside each <Field> with formula defs and sql
         self.tables = self._handle_standard_equations()
@@ -63,8 +64,8 @@ class App:
         for table in self.tables:
             self._write_sql(table.sql, path, "tables", table.name)
 
-        for rel in self.sql_relationships:
-            self._write_sql(rel["sql"], path, "relationships", rel["name"])
+        for rel in self.relationships:
+            self._write_sql(rel.sql, path, "relationships", rel.name)
 
     def _write_sql(self, sql, path, subdir, name_attr, method="w"):
 
@@ -83,125 +84,33 @@ class App:
     def _handle_tables(self):
         return [Table(obj) for obj in self.objects]
 
-    def _generate_relationship_sql(self):
-        statements = []
+    def _generate_obj_lookup(self):
+        """ The obj_lookup allows us to find connected object keys across the entire app """
+        return {table.key: table.name_postgres for table in self.tables}
 
-        for rel in self.relationships:
-            statement = {"name": rel["name"]}
-
-            if rel["type"] == "one_to_many":
-                sql = self._one_to_many_statement(rel)
-                statement.update({"sql": sql})
-
-            elif rel["type"] == "many_to_many":
-                sql = self._many_to_many_statement(rel)
-                statement.update({"sql": sql})
-
-            statements.append(statement)
-
-        return statements
-
-    def _one_to_many_statement(self, rel):
-        return f"""ALTER TABLE {rel["child"]}\nADD CONSTRAINT {rel["parent_field_name"]} FOREIGN KEY (id) REFERENCES {rel["parent"]} (id);\n\n"""
-
-    def _many_to_many_statement(self, rel):
-        # see https://stackoverflow.com/questions/9789736/how-to-implement-a-many-to-many-relationship-in-postgresql
-        t1 = rel["parent"]
-        t2 = rel["child"]
-        pk1 = f"{t1}_id"
-        pk2 = f"{t2}_id"
-        rel_table_name = f"{t1}_{t2}"
-
-        return f"""CREATE TABLE IF NOT EXISTS {rel_table_name} (\n{TAB}{pk1} integer REFERENCES {t1} (id) ON UPDATE CASCADE ON DELETE CASCADE,\n{TAB}{pk2} integer REFERENCES {t2} (id) ON UPDATE CASCADE,\n{TAB}CONSTRAINT {rel_table_name}_pk PRIMARY KEY ({pk1}, {pk2})\n);\n\n"""
-
-    def _handle_relationships(self):
-        """
-        >> one to many
-
-        'object_53 cameras signal'
-        "{'object': 'signals', 'has': 'one', 'belongs_to': 'many'}"
-        so object is related object. has one belongs to many means current table is the child
+    def _create_relationships(self):
         
-        one signal has many cameras
-
-        >> many to many
-        'object_75 tmc_activities signals_affected'
-        "{'belongs_to': 'many', 'has': 'many', 'object': 'signals'}"
-        many signals have mand tmc_activities
-
-        >> many to one
-        'object_118 signals_cabinet signal'
-        "{'belongs_to': 'one', 'has': 'many', 'object': 'signals'}"
-
-        one cabinet has many signals at cabinet_id
-        """
-
-        app_relationships = []
-
-        obj_lookup = {table.key: table.name_postgres for table in self.tables}
+        relationships = []
 
         for table in self.tables:
-            connection_fields = [
-                field for field in table.fields if field.type_knack == "connection"
-            ]
 
-            if not connection_fields:
-                continue
+            for field in table.fields:
 
-            for conn_field in connection_fields:
-                rel_obj = conn_field.relationship_knack["object"]
-                rel_table_name = obj_lookup[rel_obj]
-                rel_name = f"{table.name_postgres}_{rel_table_name}"
+                if field.type_knack != "connection":
+                    continue
 
-                rel = {"name": rel_name}
+                rel_obj = field.relationship_knack["object"]
+                rel_table_name = self.obj_lookup[rel_obj]
 
-                if (
-                    conn_field.relationship_knack["has"] == "one"
-                    and conn_field.relationship_knack["belongs_to"] == "many"
-                ):
-                    # one-to-many relationship
-                    rel.update(
-                        {
-                            "field_key_knack": conn_field.key_knack,
-                            "parent_field_name": f"{rel_table_name}_id",
-                            "child": table.name_postgres,
-                            "parent": rel_table_name,
-                            "type": "one_to_many",  # one parent to many children
-                        }
-                    )
+                rel = Relationship(
+                    field=field,
+                    host_table=table.name_postgres,
+                    rel_table=rel_table_name,
+                )
 
-                elif (
-                    conn_field.relationship_knack["has"] == "many"
-                    and conn_field.relationship_knack["belongs_to"] == "one"
-                ):
-                    # many-to-one relationship
-                    # this is an artefact of knack relationships.
-                    # in postgres one-to-many and many-to-one are the same (i think...todo)
-                    rel.update(
-                        {
-                            "field_key_knack": conn_field.key_knack,
-                            "parent_field_name": f"{table.name_postgres}_id",
-                            "child": rel_table_name,
-                            "parent": table.name_postgres,
-                            "type": "one_to_many",  # one parent to many children
-                        }
-                    )
+                relationships.append(rel)
 
-                else:
-                    # many-to-many
-                    # see: https://stackoverflow.com/questions/9789736/how-to-implement-a-many-to-many-relationship-in-postgresql
-                    rel.update(
-                        {
-                            "field_key_knack": conn_field.key_knack,
-                            "child": rel_table_name,
-                            "parent": table.name_postgres,  # the connection field exists on this object. this is important to get right for purposes of formulas
-                            "type": "many_to_many",  # many parents to many children
-                        }
-                    )
-
-                app_relationships.append(rel)
-
-        return app_relationships
+        return relationships
 
     def _standard_equation_to_sql(
         self, parent_table, child_table, child_field, field_name, method
@@ -258,9 +167,9 @@ class App:
     def _find_table_name_from_connecton_field(self, table, key):
         # traverse relationships to get table name of a connnected field
         for rel in self.relationships:
-            if rel["field_key_knack"] == key:
+            if rel.host_field_key_knack == key:
                 # found it
-                return rel["child"]
+                return rel.child
 
         return None
 
