@@ -26,17 +26,21 @@ $ pip install knackpostgres
 
 ### Convert your App to PostgreSQL
 
-`knackpostgres` will generate a series of Postgres-compliant SQL commands which can be executued to create your database.
+`knackpostgres` will generate a series of Postgres-compliant SQL commands which translate your Knack app's schema to a PostgreSQL schema. 
 
 ```python
 >>> from knackpostgres import App
 
 >>> app = App("myappidstring")
-
->>> app.to_sql() # writes statements to /sql directory
 ```
 
-The SQL commands are co-dependent and must be executed in the proper order. TODO: make this easy and document it.
+If you want to execute the SQL commandsd manually, you can write to the entire App's SQL commands to files:
+
+```python
+>>> app.to_sql(path="mypath") # writes statements to /sql directory
+```
+
+Alternatively, you can use the `Loader` class to execute your app's SQL. Read on...
 
 ### Quick Create PostgreSQL databse
 
