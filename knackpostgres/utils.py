@@ -22,4 +22,10 @@ def valid_pg_name(original_name):
     # replace non-alphanum chars with underscore
     new_name = "".join(e if e.isalnum() else "_" for e in new_name)
 
+    # make sure we dont have a forbidden name here
+    forbidden_names = ["user", "default", "unique"]
+
+    if original_name in forbidden_names:
+        new_name = f"_{original_name}"
+
     return new_name, original_name
