@@ -1,5 +1,6 @@
 class DataHandler:
     """ Translate Knack record values to destination DB values """
+
     def __repr__(self):
         return f"<Handler type=`{self.type}` name=`{self.handler.__name__}`>"
 

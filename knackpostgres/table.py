@@ -1,6 +1,10 @@
 from .field_def import FieldDef
+from .formula_field import FormulaField
+from .many_to_one_field import ManyToOneField
+from .many_to_many_field import ManyToManyField
+from .standard_field import StandardField
 from .utils import valid_pg_name
-from .constants import TAB
+from .constants import FIELD_DEFINITIONS, TAB
 
 
 class Table:
@@ -19,34 +23,112 @@ class Table:
 
         self.fields = self._handle_fields()
 
-        # drop connections, formulae?
+        # todo: drop connections, formulae?
         self.field_map = self._generate_field_map()
 
-        self.sql = self.to_sql()
+    def update_one_to_many_relationships(self, obj_lookup):
+
+        for field in self.fields:
+            
+            try:
+                if field.relationship_type == "many_to_many":
+                    continue
+            
+            except AttributeError:
+                continue
+            
+            rel_obj = field.relationship_knack["object"]
+            rel_table_name = obj_lookup[rel_obj]
+            
+            field.handle_relationship(
+                host_table_name=self.name_postgres, rel_table_name=rel_table_name
+            )
+
+        return self
+
+    def _remove_dupes(self):
+        # sometimes the metadata has duplicate, identical entries for the same field.
+        # they have different knack record IDs, so....?
+        field_keys = []
+        cleaned = []
+
+        for field in self.fields:
+            if field["key"] not in field_keys:
+                field_keys.append(field["key"])
+                cleaned.append(field)
+
+        return cleaned
 
     def _handle_fields(self):
+        self.fields = self._remove_dupes()
+        
+        self.fields.append(self._primary_key_field())
+        
+        self.fields.append(self._knack_id_field())
 
-        # adds an "obj_name" key to field Class, which comes in useful for debugging
-        fields = [
-            field.update({"obj_name": self.name_postgres})
-            for field in self.fields
-            if field["type"]
-        ]
+        classified = self._classify_fields()
 
-        fields = [FieldDef(field) for field in self.fields]
+        formula_fields = [FormulaField(field, self) for field in classified["formulas"] ]
 
-        fields.append(self._generate_primary_key_field())
+        many_to_one_fields = [ManyToOneField(field, self) for field in classified["connections"]["many_to_one"]]
 
-        fields.append(self._generate_knack_id_field())
+        many_to_many_fields = [ManyToManyField(field, self) for field in classified["connections"]["many_to_many"]]
+
+        standard_fields = [StandardField(field, self) for field in classified["standard"]]
+
+        return formula_fields + many_to_one_fields + many_to_many_fields + standard_fields
+
+    def _classify_fields(self):
+        fields = {
+            "formulas": [],
+            "connections": {
+                "many_to_one": [],
+                "many_to_many": []
+            },
+            "standard": []
+        }
+
+        for field in self.fields:
+            if self._is_formula(field):
+                fields["formulas"].append(field)
+
+            elif self._is_connection(field):
+                has = field["relationship"]["has"]
+                belongs_to = field["relationship"]["belongs_to"]
+                connection_type = f"{has}_to_{belongs_to}"
+
+                try:
+                    fields["connections"][connection_type].append(field)
+                except KeyError:
+                    # assume one-to-many field (handled the same as many-to-one)
+                    fields["connections"]["many_to_one"].append(field) 
+
+            else:
+                fields["standard"].append(field)
 
         return fields
 
+    def _is_connection(self, field):
+        return True if field["type"] == "connection" else False
+
+    def _is_formula(self, field):
+        if FIELD_DEFINITIONS.get(field["type"]).get("is_formula"):
+            return True
+        else:
+            return False
+
     def to_sql(self):
-        fields = [field.sql for field in self.fields if field.sql]
 
-        field_sql = f",\n{TAB}".join(fields)
+        fields_sql = [
+            field.to_sql()
+            for field in self.fields
+            if not type(field) in [FormulaField, ManyToManyField]
+        ]
 
-        return f"""CREATE TABLE IF NOT EXISTS {self.name_postgres} (\n{TAB}{field_sql}\n);\n\n"""
+        fields_sql = f",\n{TAB}".join(fields_sql)
+
+        self.sql = f"""CREATE TABLE IF NOT EXISTS {self.name_postgres} (\n{TAB}{fields_sql}\n);\n\n"""
+        return self.sql
 
     def _generate_field_map(self):
         return {
@@ -54,8 +136,8 @@ class Table:
             for field in self.fields
         }
 
-    def _generate_knack_id_field(self):
-        knack_id = {
+    def _knack_id_field(self):
+        return {
             "required": True,
             "unique": True,
             "name": "knack_id",
@@ -63,16 +145,14 @@ class Table:
             "type": "_knack_id",  # todo: we'll have to map knack record "id" value to this field
         }
 
-        return FieldDef(knack_id)
+        return FieldDef(knack_id_params, self)
 
-    def _generate_primary_key_field(self):
+    def _primary_key_field(self):
 
-        pk = {
+        return {
             "required": True,
             "unique": True,
             "name": "id",
             "key": "id",
             "type": "_pg_primary_key",  # todo: we'll have to map knack record IDs to this new serial
         }
-
-        return FieldDef(pk, primary_key=True)

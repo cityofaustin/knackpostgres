@@ -5,6 +5,7 @@ from .handler_data import DataHandler
 
 """ under construction """
 
+
 class Translator:
     def __repr__(self):
         return f"<Translator {self.knack.obj}> to {self.table.name}"

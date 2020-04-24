@@ -1,3 +1,6 @@
+from .constants import FORBIDDEN_NAMES
+
+
 def valid_pg_name(original_name):
     """
     Convert an arbitrary string into a postgres-compliant name.
@@ -22,10 +25,7 @@ def valid_pg_name(original_name):
     # replace non-alphanum chars with underscore
     new_name = "".join(e if e.isalnum() else "_" for e in new_name)
 
-    # make sure we dont have a forbidden name here
-    forbidden_names = ["user", "default", "unique"]
-
-    if new_name in forbidden_names:
+    if new_name in FORBIDDEN_NAMES:
         new_name = f"_{new_name}"
 
     return new_name, original_name

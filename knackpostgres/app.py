@@ -8,8 +8,11 @@ import pdb
 
 from knackpy import get_app_data
 
+from .formula_field import FormulaField
 from .constants import TAB
 from .table import Table
+from .reference_table import ReferenceTable
+from .view import View
 from .relationship import Relationship
 from .utils import valid_pg_name
 
@@ -47,10 +50,13 @@ class App:
 
         self.obj_lookup = self._generate_obj_lookup()
 
-        self.relationships = self._create_relationships()
+        self._update_one_to_many_relationships()
 
-        # creates a "formula" key inside each <Field> with formula defs and sql
-        self.tables = self._handle_standard_equations()
+        self.tables += self._update_many_to_many_relationships()
+
+        self._handle_formulae()
+
+        self.views = self._handle_views()
 
         logging.info(self)
 
@@ -62,10 +68,10 @@ class App:
         from the `App` class.
         """
         for table in self.tables:
-            self._write_sql(table.sql, path, "tables", table.name)
+            self._write_sql(table.to_sql(), path, "tables", table.name_postgres)
 
-        for rel in self.relationships:
-            self._write_sql(rel.sql, path, "relationships", rel.name)
+        for view in self.views:
+            self._write_sql(view.sql, path, "views", view.name)
 
     def _write_sql(self, sql, path, subdir, name_attr, method="w"):
 
@@ -84,116 +90,84 @@ class App:
     def _handle_tables(self):
         return [Table(obj) for obj in self.objects]
 
+    def _handle_views(self):
+        return [View(table) for table in self.tables]
+
     def _generate_obj_lookup(self):
         """ The obj_lookup allows us to find connected object keys across the entire app """
         return {table.key: table.name_postgres for table in self.tables}
 
-    def _create_relationships(self):
-        
-        relationships = []
+    def _update_one_to_many_relationships(self):
+        # sets field definitions for relationship fields,
+        # which require references to other tables
+        for table in self.tables:
+            table.update_one_to_many_relationships(self.obj_lookup)
+
+    def _update_many_to_many_relationships(self):
+        """
+        Ah what a joy are many-to-many relationships. to handle these, we need
+        to create an associative table which holds relationships across two
+        tables. we accomplish this by parsing each relationship definition
+        and calling a new `Table` class with the appriate `FieldDef` classes.
+
+        Obviously this all needs to happen after all other tables and fields
+        have been instanciated (except for formulae, which rely on relationships)
+        so that we can reference the postgres database table and field names.
+        """
+        fields = self._gather_many_to_many_relationships()
+
+        tables = []
+
+        for field in fields:
+            field.set_relationship_references(self)
+            
+            tables.append(ReferenceTable(field.reference_table_data))
+
+        return tables
+
+    def _gather_many_to_many_relationships(self):
+
+        fields = []
 
         for table in self.tables:
-
             for field in table.fields:
+                try:
+                    if field.relationship_type == "many_to_many":
+                        fields.append(field)
 
-                if field.type_knack != "connection":
+                except AttributeError:
                     continue
+        return fields
 
-                rel_obj = field.relationship_knack["object"]
-                rel_table_name = self.obj_lookup[rel_obj]
-
-                rel = Relationship(
-                    field=field,
-                    host_table=table.name_postgres,
-                    rel_table=rel_table_name,
-                )
-
-                relationships.append(rel)
-
-        return relationships
-
-    def _standard_equation_to_sql(
-        self, parent_table, child_table, child_field, field_name, method
-    ):
-        return f"""(SELECT {method}({child_field}) FROM {child_table} WHERE {child_table}.{parent_table}_id = {parent_table}.id) AS {field_name}"""
-
-    def _handle_standard_equations(self):
-        standard_eqs = ["count", "sum", "max", "average", "min"]
-
+    def _handle_formulae(self):
         for table in self.tables:
-
             for field in table.fields:
-                if field.type_knack not in standard_eqs:
-                    continue
-
-                field.formula = {}
-
-                field.formula["parent_table"] = table.name
-
-                if field.type_knack == "count":
-                    pg_method = "COUNT"
-
-                    field.formula[
-                        "child_table"
-                    ] = self._find_table_name_from_connecton_field(
-                        table, field.format_knack["connection"]
-                    )
-
-                    # for counts, always just count the primary key
-                    field.formula["child_field"] = "id"
-
-                else:
-                    pg_method = field.type_knack.upper()
-                    pg_method = "AVG" if pg_method == "AVERAGE" else pg_method
-
-                    field.formula["child_table"] = self._find_table_name_from_field_key(
-                        field.format_knack["field"]
-                    )
-                    field.formula["child_field"] = self._find_field_name_from_field_key(
-                        field.format_knack["field"]
-                    )
-
-                field.formula["pg_method"] = pg_method
-                field.formula["sql"] = self._standard_equation_to_sql(
-                    field.formula.get("parent_table"),
-                    field.formula.get("child_table"),
-                    field.formula.get("child_field"),
-                    field.name_postgres,
-                    field.formula.get("pg_method"),
-                )
+                if isinstance(field, FormulaField):
+                    field.handle_formula(self)
 
         return self.tables
 
-    def _find_table_name_from_connecton_field(self, table, key):
-        # traverse relationships to get table name of a connnected field
-        for rel in self.relationships:
-            if rel.host_field_key_knack == key:
-                # found it
-                return rel.child
-
+    def find_table_from_object_key(self, key, return_attr=None):
+        for table in self.tables:
+            if table.key == key:
+                return table if not return_attr else getattr(table, return_attr)
         return None
 
-    def _find_field_name_from_field_key(self, key):
+    def find_field_from_field_key(self, key, return_attr=None):
         """
-        from a knack field key, track postgres fieldname
+        from a knack field key, track down the `FieldDef` instance
         """
-        try:
-            # some times the connection is under "key", and somtimes it's a string literal
-            key = key.get("key")
-
-        except AttributeError:
-            pass
-
         for table in self.tables:
             for field in table.fields:
                 if field.key_knack == key:
-                    return field.name_postgres
-
+                    try:
+                        return field if not return_attr else getattr(field, return_attr)
+                    except AttributeError:
+                        return None
         else:
-            # field not found!
             return None
 
-    def _find_table_name_from_field_key(self, key):
+    def find_table_from_field_key(self, key, return_attr=None):
         """
         from a knack field key, track down the table in which that field lives
         """
@@ -208,7 +182,7 @@ class App:
             for field in table.fields:
                 if field.key_knack == key:
                     # we found it :)
-                    return table.name
+                    return table if not return_attr else getattr(table, return_attr)
 
         # no table found that contains this key
         return None

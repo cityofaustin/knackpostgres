@@ -1,25 +1,27 @@
-import pdb
-
-from .constants import FIELD_DEFINITIONS
+from .constants import FIELD_DEFINITIONS, TAB
 from .utils import valid_pg_name
 
 
 class FieldDef:
-    """ A Knack `field` definition wrapper """
+    """ Base class for Knack `field` definition wrappers """
 
     def __repr__(self):
-        return f"<FieldDef {self.name_postgres}> ({self.type_knack})"
+        return f"<{type(self).__name__} '{self.name_postgres}'>"
 
-    def __init__(self, data, primary_key=False):
+    def __init__(self, data, table, primary_key=False):
         """
         No knack field is used as a primary key. 
         We generate a primary key field while handling each table, during
         which we set primary_key = `True`
         """
+        self.table = table
+
         self.primary_key = primary_key
 
         for key in data:
             setattr(self, key + "_knack", data[key])
+
+        self.sql = None
 
         # convert field name to underscore and presever original
         self.name_postgres, self.name_knack = valid_pg_name(self.name_knack)
@@ -32,15 +34,47 @@ class FieldDef:
 
         self._handle_rules()
 
-        self.sql = self._to_sql() if self.data_type else None
-
     def _postgres_data_type(self, type_knack):
 
         try:
-            return FIELD_DEFINITIONS.get(type_knack).get("type_postgres")
+            data_type_postgres = FIELD_DEFINITIONS.get(type_knack).get("type_postgres")
 
         except AttributeError:
             raise AttributeError(f"Unsupported knack type: {type_knack}")
+
+        return (
+            f"{data_type_postgres}[]"
+            if self._handle_array_type()
+            else data_type_postgres
+        )
+
+    def _handle_array_type(self):
+        """
+        Identify array field types.
+
+        Returns False if field is not multi-choice, else True
+
+        PG Docs: https://www.postgresql.org/docs/9.1/arrays.html
+        """
+        try:
+            # type options are ["single", "radios", "multi"]
+            if self.format_knack["type"] == "multi":
+                return True
+
+        except (TypeError, AttributeError, KeyError):
+            """
+            some fields have no "format_knack" attr (AttributeError), others have
+            a format_knack attr as `noneType` (TypeError), and still others have a format_knack
+            attr, but no `type` key (KeyError)
+            """
+            return False
+
+        # todo handle format elsewhere
+        self.options = self.format_knack.get("options")
+
+        self.blank = self.format_knack.get("blank")
+
+        self.sorting = self.format_knack.get("sorting")
 
     def _set_default(self):
 
@@ -92,46 +126,3 @@ class FieldDef:
             default = f"'{default}'"
 
         return f"DEFAULT {default} "
-
-    def _to_sql(self):
-
-        pk = "PRIMARY KEY" if self.primary_key else ""
-
-        default = self._format_default()
-
-        constraints = " ".join(self.constraints) if self.constraints else ""
-
-        return (
-            f"{self.name_postgres} {self.data_type} {pk} {default}{constraints}".strip()
-        )
-
-    def _handle_date(self):
-        date_format = self.format_knack["date_format"].lower()
-        time_format = self.format_knack["time_format"].lower()
-
-        if "ignore" in date_format:
-            self.data_type = "TIME WITH TIME ZONE"
-        else:
-            self.data_type = "TIMESTAMP WITH TIME ZONE"
-
-    def _handle_multi_choice(self):
-
-        self.data_type = "text"  # postgres type
-
-        try:
-            # none type options are ["single", "radios", "multi"]
-            if self.format_knack["type"] == "multi":
-                self.array = True
-
-        except KeyError:
-            # if no "type", this is a knack user role field
-            # so just continue for now
-            # todo: look at this
-            pass
-
-        # todo handle format elsewhere
-        self.options = self.format_knack.get("options")
-
-        self.blank = self.format_knack.get("blank")
-
-        self.sorting = self.format_knack.get("sorting")

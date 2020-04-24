@@ -37,10 +37,10 @@ class Loader:
             for table in self.app.tables:
                 self._execute_sql(cursor, table.sql, table.name)
 
-    def create_relationships(self):
+    def create_views(self):
         with self.conn.cursor() as cursor:
-            for rel in self.app.relationships:
-                self._execute_sql(cursor, rel.sql, rel.name)
+            for view in self.app.views:
+                self._execute_sql(cursor, view.sql, view.name)
 
     def _execute_sql(self, cursor, sql, name):
         try:

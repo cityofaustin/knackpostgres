@@ -35,7 +35,7 @@ $ pip install knackpostgres
 >>> app = App("myappidstring")
 ```
 
-If you want to execute the SQL commandsd manually, you can write to the entire App's SQL commands to files:
+If you want to execute the SQL commandsd manually, you can write the App's SQL commands to files:
 
 ```python
 >>> app.to_sql(path="mypath") # writes statements to mypath/sql directory
