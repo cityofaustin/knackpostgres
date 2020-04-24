@@ -14,7 +14,10 @@ class ManyToOneField(ConnField):
 
         default = self._format_default()
 
-        constraints = " ".join(self.constraints) if self.constraints else ""
+        # todo enable these after data is loaded
+        # constraints = " ".join(self.constraints) if self.constraints else ""
+        
+        constraints = ""
 
         self.sql = f"{self.name_postgres} {self.data_type} {pk} {default}{constraints}".strip()
         return self.sql

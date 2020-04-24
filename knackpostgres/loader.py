@@ -1,7 +1,7 @@
+import csv
 import logging
 
 import psycopg2
-
 
 class Loader:
     """ Wrapper for executing Knack applicaton SQL commands """
@@ -42,6 +42,11 @@ class Loader:
             for view in self.app.views:
                 self._execute_sql(cursor, view.sql, view.name)
 
+    def insert_each(self, translator):
+        with self.conn.cursor() as cursor:
+            for statement in translator.sql:
+                self._execute_sql(cursor, statement, translator.table.name_postgres)
+
     def _execute_sql(self, cursor, sql, name):
         try:
             cursor.execute(sql)
@@ -51,3 +56,29 @@ class Loader:
             logging.error(f"Failed to create {name}")
             logging.error(e)
             pass
+
+    def load_csv(self, translator):
+        table_name = translator.table.name_postgres
+        # records = json.loads(json.dumps(translator.records))
+        # sql_string = 'INSERT INTO {} '.format( table_name )
+        # columns = translator.fieldnames
+        # values = []
+        # for record in records:
+        #     for k, v in record.items:
+        #         val = "'" + val + "'"
+        # import pdb; pdb.set_trace()
+        # import json
+        # import io
+
+
+        # with self.conn.cursor() as cursor:
+        #     for record in translator.records:
+        #         json_to_write = json.dumps(record).replace('\\','\\\\')
+        #         buffer_ = io.StringIO(json_to_write)                
+        #         cursor.copy_from(buffer_, table_name, columns=translator.fieldnames, sep=",")
+        #         pdb.set_trace()
+        # pdb.set_trace()
+
+        with open(translator.fname, "r") as fin:
+            with self.conn.cursor() as cursor:
+                cursor.copy_from(fin, table_name, columns=translator.fieldnames, sep="|")

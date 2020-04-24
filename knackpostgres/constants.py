@@ -1,3 +1,5 @@
+PG_NULL = "$$NULL$$"
+
 TAB = "    "
 
 FORBIDDEN_NAMES = ["user", "default", "unique", "number", "limit"]
@@ -118,7 +120,7 @@ FIELD_DEFINITIONS = {
         "is_standard_equation": False,
     },
     "user_roles": {
-        "type_postgres": "JSON",
+        "type_postgres": "TEXT[]",
         "is_formula": False,
         "is_standard_equation": False,
     },

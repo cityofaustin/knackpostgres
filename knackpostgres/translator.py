@@ -2,14 +2,16 @@ import csv
 import logging
 from pathlib import Path
 
-from .handler_data import DataHandler
+from .data_handlers import DataHandlers
+from .constants import PG_NULL
 
 """ under construction """
 
+IGNORE_FIELD_TYPES = ["connection", "concatenation", "max", "min", "count", "sum", "average", "signature", "equation"]
 
 class Translator:
     def __repr__(self):
-        return f"<Translator {self.knack.obj}> to {self.table.name}"
+        return f"<Translator {self.knack.obj}> to {self.table.name_postgres}"
 
     def __init__(self, knack, table):
         # where knack is a knackpy.Knack object and table is a Table class instance
@@ -40,9 +42,12 @@ class Translator:
                     # which is fine, we skip them
                     continue
 
+                if field_type in IGNORE_FIELD_TYPES:
+                    continue
+
                 # use the DataHandler to translate the data based on field type
                 try:
-                    handler = DataHandler(field_type)
+                    handler = DataHandlers(field_type)
                 except ValueError:
                     # a handler has been explicitly NOT defined for this field type
                     # field will be dropped
@@ -139,21 +144,51 @@ class Translator:
 
         return new_records
 
+
+    def to_sql(self, path="data"):
+        path = Path.cwd() / path
+        path.mkdir(exist_ok=True)
+        self.fname = path / (self.table.name_postgres + ".sql")
+        
+        statements = []
+
+        with open(self.fname, "w") as fout:
+
+            for record in self.records:
+                columns = record.keys()
+                columns = ", ".join(columns)
+
+                values = ", ".join([f"'{val}'" for key, val in record.items()])
+            
+            sql = f"""INSERT INTO {self.table.name_postgres} ({columns}) VALUES\n({values});\n\n"""
+            
+            sql = sql.replace(f"'{PG_NULL}'", "NULL")
+            
+            fout.write(sql)
+            statements.append(sql)
+
+        logging.info(f"{self.fname} - {len(self.records)} records")    
+        self.sql = statements
+
+    
+    
     def to_csv(self, path="data"):
 
         path = Path.cwd() / path
         path.mkdir(exist_ok=True)
-        fname = path / (self.table.name + ".csv")
+        self.fname = path / (self.table.name_postgres + ".csv")
 
-        with open(fname, "w") as fout:
+        with open(self.fname, "w") as fout:
 
-            fieldnames = [field for field in self.records[0].keys()]
+            self.fieldnames = [field for field in self.records[0].keys()]
 
-            writer = csv.DictWriter(fout, fieldnames=fieldnames)
+            writer = csv.DictWriter(fout, fieldnames=self.fieldnames, quotechar="'", delimiter='|')
 
-            writer.writeheader()
+            # we don't write the header. because postgresql 
+            # doesn't want it. you can fetch them from self.fieldnames
+            # writer.writeheader()
 
             for record in self.records:
                 writer.writerow(record)
 
-        print(f"{fname} - {len(self.records)} records")
+        print(f"{self.fname} - {len(self.records)} records")
