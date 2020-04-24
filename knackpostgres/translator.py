@@ -1,4 +1,5 @@
 import csv
+import logging
 from pathlib import Path
 
 from .handler_data import DataHandler
@@ -14,41 +15,14 @@ class Translator:
         # where knack is a knackpy.Knack object and table is a Table class instance
         self.knack = knack
         self.table = table
+
+        if not self.knack.data_raw:
+            logging.warning(f"{self}: no records to process.")
+            raise IndexError(f"No records found at {self.knack.obj}")
+
         self.knack.data_raw = self._replace_raw_fieldnames()
         self.records = self._translate_records()
         self.records = self._convert_fieldnames()
-
-    def _drop_forbidden_fields(self):
-
-        return [
-            field
-            for field in knack.data_raw
-            if field["name"].lower() not in FORBIDDEN_FIELD_NAMES
-        ]
-
-    def _drop_excluded_fields(self):
-
-        new_records = []
-
-        for record in self.knack.data_raw:
-            new_record = {}
-
-            for key in record.keys():
-                try:
-                    field_type = self.knack.fields[key].get("type")
-                except KeyError:
-                    # also dropping "account_status" and any other internal fields. TODO: warning
-                    continue
-
-                if field_type in EXCLUDED_TYPES:
-                    print(field_type)
-                    continue
-                else:
-                    new_record[key] = record[key]
-
-            new_records.append(new_record)
-
-        return new_records
 
     def _translate_records(self):
         translated_records = []
