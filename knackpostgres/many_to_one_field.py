@@ -44,7 +44,7 @@ class ManyToOneField(ConnField):
         defined in .constanstants.FIELD_DEFINITIONS
         """
         self.rel_table_name = rel_table_name
-        self.name_postgres = f"{self.name_postgres}_rel_{self.rel_table_name}_id"
+        self.name_postgres = f"_rel_{self.rel_table_name}_id"
 
         if self.relationship_type == "many_to_one":
             # set one-to-many field as array type

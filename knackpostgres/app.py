@@ -60,6 +60,17 @@ class App:
 
         logging.info(self)
 
+    # def print_stuff(self):
+    #     for obj in self.objects:
+    #         for field in obj["fields"]:
+    #             if field.get("rules"):
+    #                 for rule in field["rules"]:
+    #                     print(f"criteria: {rule['criteria']}")
+    #                     print(f"values: {rule['values']}")
+
+                # if field["type"] == "equation":
+                #     print(field["format"]["equation"])
+
     def to_sql(self, path="sql"):
         """
         Write application SQL commands to file.

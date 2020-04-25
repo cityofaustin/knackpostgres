@@ -37,7 +37,49 @@ class Loader:
             for table in self.app.tables:
                 self._execute_sql(cursor, table.sql, table.name)
 
+
+    def _sequence_views(self):
+        """
+        Some views depend on fields in other views. We sort
+        the views to ensure that each view is created after
+        its dependencies.
+
+        TODO: what about co-dependent views? yikes.
+        """
+        sequenced_view_names = []
+        
+        # first, we generate a list of view names in order
+        # using the `depends_on` attribute of each view
+        for i, view in enumerate(self.app.views):
+            if view.name in sequenced_view_names:
+                continue
+            
+            if not view.depends_on:
+                sequenced_view_names.insert(0, view.name)
+                continue
+
+            for dependency_view in view.depends_on:
+                if dependency_view in sequenced_view_names:
+                    continue
+                sequenced_view_names.append(dependency_view)
+
+            sequenced_view_names.append(view.name)
+
+
+        # now we re-order the actual view classes in the app
+
+        sequenced_views = []
+        for view_name in sequenced_view_names:
+            for view in self.app.views:
+                if view.name == view_name:
+                    sequenced_views.append(view)
+
+        return sequenced_views
+
     def create_views(self):
+
+        self.app.views = self._sequence_views()
+
         with self.conn.cursor() as cursor:
             for view in self.app.views:
                 self._execute_sql(cursor, view.sql, view.name)

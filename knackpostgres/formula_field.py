@@ -1,4 +1,5 @@
 from .field_def import FieldDef
+from .equation import Equation
 from .constants import FIELD_DEFINITIONS
 
 
@@ -13,6 +14,15 @@ class FormulaField(FieldDef):
 
         if FIELD_DEFINITIONS[self.type_knack].get("is_standard_equation"):
             self.sql = self._handle_standard_equation(app)
+
+        elif self.type_knack == "equation":
+            self.sql = self._handle_custom_equation(app)
+
+        else:
+            return None
+
+    def _handle_custom_equation(self, app):
+        return Equation(self, self.table)
 
     def _handle_standard_equation(self, app):
         """
@@ -62,7 +72,6 @@ class FormulaField(FieldDef):
 
         self.connection_field = app.find_field_from_field_key(self.connection_field_key)
 
-        
         self.dest_join_field = self.connection_field.name_postgres
 
         if self.connection_field.relationship_type == "many_to_many":
@@ -73,22 +82,25 @@ class FormulaField(FieldDef):
         
     def _many_to_many_formula(self, app):
         self.rel_table_name = self.connection_field.rel_table_name
+        self.rel_table_view_name = f"{self.rel_table_name}_view"
         self.reference_table_name = self.connection_field.reference_table_name
 
-        return f"""(SELECT {self.method}({self.rel_table_name}.{self.dest_field_name}) as {self.name_postgres}
-            FROM {self.rel_table_name}
+        return f"""(SELECT {self.method}({self.rel_table_view_name}.{self.dest_field_name}) as {self.name_postgres}
+            FROM {self.rel_table_view_name}
             JOIN {self.reference_table_name} 
-            ON {self.reference_table_name}.{self.rel_table_name}_id = {self.rel_table_name}.id
+            ON {self.reference_table_name}.{self.rel_table_name}_id = {self.rel_table_view_name}.id
             JOIN {self.host_table_name}
             ON {self.reference_table_name}.{self.host_table_name}_id = {self.host_table_name}.id)
         """
 
     def _one_to_many_formula(self, app):
-        
+
         if self.table.name_postgres == self.connection_field.table.name_postgres:
             self.rel_table_name = self.connection_field.rel_table_name
         else:
             self.rel_table_name = self.connection_field.table.name_postgres
+        
+        self.rel_table_name = f"{self.rel_table_name}_view"
 
         return f"""(SELECT {self.method}({self.rel_table_name}.{self.dest_field_name}) FROM {self.rel_table_name} WHERE {self.rel_table_name}.{self.dest_join_field} = {self.host_table_name}.id) AS {self.name_postgres}"""
 

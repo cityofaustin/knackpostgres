@@ -160,12 +160,12 @@ class Translator:
 
                 values = ", ".join([f"'{val}'" for key, val in record.items()])
             
-            sql = f"""INSERT INTO {self.table.name_postgres} ({columns}) VALUES\n({values});\n\n"""
+                sql = f"""INSERT INTO {self.table.name_postgres} ({columns}) VALUES\n({values});\n\n"""
             
-            sql = sql.replace(f"'{PG_NULL}'", "NULL")
+                sql = sql.replace(f"'{PG_NULL}'", "NULL")
             
-            fout.write(sql)
-            statements.append(sql)
+                fout.write(sql)
+                statements.append(sql)
 
         logging.info(f"{self.fname} - {len(self.records)} records")    
         self.sql = statements
