@@ -2,12 +2,14 @@ import csv
 import logging
 from pathlib import Path
 
+from .many_to_one_field import ManyToOneField
+from .many_to_many_field import ManyToManyField
 from .data_handlers import DataHandlers
 from .constants import PG_NULL
 
 """ under construction """
 
-IGNORE_FIELD_TYPES = ["connection", "concatenation", "max", "min", "count", "sum", "average", "signature", "equation"]
+IGNORE_FIELD_TYPES = ["concatenation", "max", "min", "count", "sum", "average", "signature", "equation"]
 
 class Translator:
     def __repr__(self):
@@ -25,6 +27,76 @@ class Translator:
         self.knack.data_raw = self._replace_raw_fieldnames()
         self.records = self._translate_records()
         self.records = self._convert_fieldnames()
+        self.connection_data = self._extract_connections()
+        self._drop_many_to_many_fields()
+
+    
+    def connections_sql(self):
+        if not self.connection_data:
+            return []
+
+        for record in self.connection_data:
+            record["sql"] = self.update_statement_where(**record)
+
+        return [record["sql"] for record in self.connection_data]
+
+
+    def update_statement_where(self, **kwargs):
+        return f"""UPDATE {kwargs["host_table_name"]} SET ({kwargs["field_name"]}) =
+            (SELECT id FROM {kwargs["rel_table_name"]}
+            WHERE {kwargs["rel_table_name"]}.knack_id = '{kwargs["conn_record_id"]}')
+            WHERE knack_id = '{kwargs["knack_id"]}';"""
+
+    def _extract_connections(self):
+        
+        conn_fields = {field.name_postgres: field for field in self.table.fields if isinstance(field, ManyToOneField)}
+        
+        if not conn_fields:
+            return None
+
+        conn_data = []
+        
+        for record in self.records:
+            for field in record.keys():
+                if field in conn_fields:
+                    vals = record[field]
+                    rel_table_name = conn_fields[field].rel_table_name
+                    
+                    if isinstance(vals, list):
+                        for val in vals:
+                            conn_data.append(self._connection_record(field, record["knack_id"], val["id"], rel_table_name))
+                    else:
+                        print("single one!!!!!")
+                        conn_data.append(self._connection_record(field, record["knack_id"], vals["id"], rel_table_name))
+        
+        self._drop_connection_fields(conn_fields.keys())
+
+        return conn_data
+
+    def _connection_record(self, field_name, knack_id, conn_record_id, rel_table_name):
+        return {"host_table_name": self.table.name_postgres, "field_name": field_name, "knack_id": knack_id, "conn_record_id": conn_record_id, "rel_table_name": rel_table_name}
+
+    def _drop_connection_fields(self, conn_fieldnames):
+
+        for record in self.records:
+            for fname in conn_fieldnames:
+                try:
+                    record.pop(fname)
+                except KeyError:
+                    pass
+
+        return None
+
+    def _drop_many_to_many_fields(self):
+        # todo: handle these fields
+        conn_fieldnames = [field.name_postgres for field in self.table.fields if isinstance(field, ManyToManyField)]
+
+        for record in self.records:
+            for fname in conn_fieldnames:
+                try:
+                    record.pop(fname)
+                except KeyError:
+                    pass
 
     def _translate_records(self):
         translated_records = []
@@ -170,9 +242,10 @@ class Translator:
         logging.info(f"{self.fname} - {len(self.records)} records")    
         self.sql = statements
 
-    
-    
-    def to_csv(self, path="data"):
+    def to_csv(self, records=None, path="data"):
+
+        if not records:
+            records = self.records
 
         path = Path.cwd() / path
         path.mkdir(exist_ok=True)
@@ -180,7 +253,7 @@ class Translator:
 
         with open(self.fname, "w") as fout:
 
-            self.fieldnames = [field for field in self.records[0].keys()]
+            self.fieldnames = [field for field in records.keys()]
 
             writer = csv.DictWriter(fout, fieldnames=self.fieldnames, quotechar="'", delimiter='|')
 
@@ -188,7 +261,7 @@ class Translator:
             # doesn't want it. you can fetch them from self.fieldnames
             # writer.writeheader()
 
-            for record in self.records:
+            for record in records:
                 writer.writerow(record)
 
         print(f"{self.fname} - {len(self.records)} records")

@@ -27,13 +27,11 @@ class DataHandlers:
     def _default_handler(self, val):
         """
         Handles these fieldtypes:
+            connection
             auto_increment
             paragraph_text
-            phone
             multiple_choice
-            currency
             short_text
-            name
             number
             boolean
         """
@@ -42,10 +40,12 @@ class DataHandlers:
             
         return val
     
+    def _connection_handler(self, val):
+        return val
+
     def _user_roles_handler(self, val):
         if val == "":
             return "{}"
-        import pdb; pdb.set_trace()
         return val
 
     def _phone_handler(self, val):

@@ -23,9 +23,6 @@ class Table:
 
         self.fields = self._handle_fields()
 
-        # todo: drop connections, formulae?
-        self.field_map = self._generate_field_map()
-
     def update_one_to_many_relationships(self, obj_lookup):
 
         for field in self.fields:
@@ -130,11 +127,12 @@ class Table:
         self.sql = f"""CREATE TABLE IF NOT EXISTS {self.name_postgres} (\n{TAB}{fields_sql}\n);\n\n"""
         return self.sql
 
-    def _generate_field_map(self):
-        return {
+    def create_field_map(self):
+        self.field_map = {
             field.key_knack: {"name": field.name_postgres, "type": field.type_knack}
             for field in self.fields
         }
+        return None
 
     def _knack_id_field(self):
         return {

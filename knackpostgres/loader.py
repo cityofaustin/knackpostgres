@@ -14,6 +14,7 @@ class Loader:
 
         # if true, will drop entire public schema from dest database!
         self.overwrite = overwrite
+        self.connections_sql = []
 
     def connect(
         self, host="localhost", dbname="postgres", user="postgres", password=None
@@ -35,7 +36,7 @@ class Loader:
                 cursor.execute("CREATE SCHEMA public;")
 
             for table in self.app.tables:
-                self._execute_sql(cursor, table.sql, table.name)
+                self._execute_sql(cursor, table.sql, table.name_postgres)
 
 
     def _sequence_views(self):
@@ -89,6 +90,13 @@ class Loader:
             for statement in translator.sql:
                 self._execute_sql(cursor, statement, translator.table.name_postgres)
 
+    def update_connections(self):
+        
+        with self.conn.cursor() as cursor:
+            for statement in self.connections_sql:
+                self._execute_sql(cursor, statement, "connection")
+
+
     def _execute_sql(self, cursor, sql, name):
         try:
             cursor.execute(sql)
@@ -99,28 +107,28 @@ class Loader:
             logging.error(e)
             pass
 
-    def load_csv(self, translator):
-        table_name = translator.table.name_postgres
-        # records = json.loads(json.dumps(translator.records))
-        # sql_string = 'INSERT INTO {} '.format( table_name )
-        # columns = translator.fieldnames
-        # values = []
-        # for record in records:
-        #     for k, v in record.items:
-        #         val = "'" + val + "'"
-        # import pdb; pdb.set_trace()
-        # import json
-        # import io
+    # def load_csv(self, translator):
+    #     table_name = translator.table.name_postgres
+    #     # records = json.loads(json.dumps(translator.records))
+    #     # sql_string = 'INSERT INTO {} '.format( table_name )
+    #     # columns = translator.fieldnames
+    #     # values = []
+    #     # for record in records:
+    #     #     for k, v in record.items:
+    #     #         val = "'" + val + "'"
+    #     # import pdb; pdb.set_trace()
+    #     # import json
+    #     # import io
 
 
-        # with self.conn.cursor() as cursor:
-        #     for record in translator.records:
-        #         json_to_write = json.dumps(record).replace('\\','\\\\')
-        #         buffer_ = io.StringIO(json_to_write)                
-        #         cursor.copy_from(buffer_, table_name, columns=translator.fieldnames, sep=",")
-        #         pdb.set_trace()
-        # pdb.set_trace()
+    #     # with self.conn.cursor() as cursor:
+    #     #     for record in translator.records:
+    #     #         json_to_write = json.dumps(record).replace('\\','\\\\')
+    #     #         buffer_ = io.StringIO(json_to_write)                
+    #     #         cursor.copy_from(buffer_, table_name, columns=translator.fieldnames, sep=",")
+    #     #         pdb.set_trace()
+    #     # pdb.set_trace()
 
-        with open(translator.fname, "r") as fin:
-            with self.conn.cursor() as cursor:
-                cursor.copy_from(fin, table_name, columns=translator.fieldnames, sep="|")
+    #     with open(translator.fname, "r") as fin:
+    #         with self.conn.cursor() as cursor:
+    #             cursor.copy_from(fin, table_name, columns=translator.fieldnames, sep="|")

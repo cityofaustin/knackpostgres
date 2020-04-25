@@ -113,6 +113,8 @@ class App:
         # which require references to other tables
         for table in self.tables:
             table.update_one_to_many_relationships(self.obj_lookup)
+            # update field map referecnces in table (used by translator)
+            table.create_field_map()
 
     def _update_many_to_many_relationships(self):
         """
@@ -133,7 +135,7 @@ class App:
             field.set_relationship_references(self)
             
             tables.append(ReferenceTable(field.reference_table_data))
-
+            
         return tables
 
     def _gather_many_to_many_relationships(self):
