@@ -27,32 +27,34 @@ class Translator:
         self.knack.data_raw = self._replace_raw_fieldnames()
         self.records = self._translate_records()
         self.records = self._convert_fieldnames()
-        self.connection_data = self._extract_connections()
-        self._drop_many_to_many_fields()
-
+        self.connection_data = self._extract_one_to_many_connections()
+        self.connection_data += self._extract_many_to_many_connections()
+        self._drop_connection_fields()
     
     def connections_sql(self):
         if not self.connection_data:
             return []
 
         for record in self.connection_data:
-            record["sql"] = self.update_statement_where(**record)
+            if record.get("reference_table_name"):
+                record["sql"] = self._insert_statement_many_to_many(**record)
+            else:
+                record["sql"] = self._update_statement_many_to_one(**record)
 
         return [record["sql"] for record in self.connection_data]
 
-
-    def update_statement_where(self, **kwargs):
+    def _update_statement_many_to_one(self, **kwargs):
         return f"""UPDATE {kwargs["host_table_name"]} SET ({kwargs["field_name"]}) =
             (SELECT id FROM {kwargs["rel_table_name"]}
             WHERE {kwargs["rel_table_name"]}.knack_id = '{kwargs["conn_record_id"]}')
             WHERE knack_id = '{kwargs["knack_id"]}';"""
 
-    def _extract_connections(self):
+    def _extract_one_to_many_connections(self):
         
         conn_fields = {field.name_postgres: field for field in self.table.fields if isinstance(field, ManyToOneField)}
         
         if not conn_fields:
-            return None
+            return []
 
         conn_data = []
         
@@ -69,14 +71,16 @@ class Translator:
                         print("single one!!!!!")
                         conn_data.append(self._connection_record(field, record["knack_id"], vals["id"], rel_table_name))
         
-        self._drop_connection_fields(conn_fields.keys())
 
         return conn_data
 
-    def _connection_record(self, field_name, knack_id, conn_record_id, rel_table_name):
-        return {"host_table_name": self.table.name_postgres, "field_name": field_name, "knack_id": knack_id, "conn_record_id": conn_record_id, "rel_table_name": rel_table_name}
+    def _connection_record(self, field_name, knack_id, conn_record_id, rel_table_name, reference_table_name=None):
+        return {"host_table_name": self.table.name_postgres, "field_name": field_name, "knack_id": knack_id, "conn_record_id": conn_record_id, "rel_table_name": rel_table_name, "reference_table_name": reference_table_name}
 
-    def _drop_connection_fields(self, conn_fieldnames):
+    def _drop_connection_fields(self):
+        # we handle conenciton fields with udpate statements
+        # so drop them to keep them out of view of loader.insert_each
+        conn_fieldnames = {field.name_postgres for field in self.table.fields if isinstance(field, ManyToOneField) or isinstance(field, ManyToManyField)}
 
         for record in self.records:
             for fname in conn_fieldnames:
@@ -84,19 +88,39 @@ class Translator:
                     record.pop(fname)
                 except KeyError:
                     pass
-
         return None
 
-    def _drop_many_to_many_fields(self):
+    def _extract_many_to_many_connections(self):
         # todo: handle these fields
-        conn_fieldnames = [field.name_postgres for field in self.table.fields if isinstance(field, ManyToManyField)]
+        conn_fields = {field.name_postgres: field for field in self.table.fields if isinstance(field, ManyToManyField)}
+
+        if not conn_fields:
+            return []
+        
+        conn_data = []
 
         for record in self.records:
-            for fname in conn_fieldnames:
-                try:
-                    record.pop(fname)
-                except KeyError:
-                    pass
+            for field in record.keys():
+                if field in conn_fields:
+                    vals = record[field]
+                    rel_table_name = conn_fields[field].rel_table_name
+                    reference_table_name = conn_fields[field].reference_table_name
+                    if isinstance(vals, list):
+                        for val in vals:
+                            conn_data.append(self._connection_record(field, record["knack_id"], val["id"], rel_table_name, reference_table_name=reference_table_name))
+                    else:
+                        print("single one!!!!!")
+                        conn_data.append(self._connection_record(field, record["knack_id"], vals["id"], rel_table_name, reference_table_name=reference_table_name))
+        return conn_data
+
+    def _insert_statement_many_to_many(self, **kwargs):
+        
+        return f"""
+            INSERT INTO {kwargs["reference_table_name"]} ({kwargs["host_table_name"]}_id, {kwargs["rel_table_name"]}_id) VALUES (
+                (SELECT id FROM {kwargs["host_table_name"]} WHERE knack_id = '{kwargs["knack_id"]}'),
+                (SELECT id FROM {kwargs["rel_table_name"]} WHERE knack_id = '{kwargs["conn_record_id"]}')
+            );
+        """
 
     def _translate_records(self):
         translated_records = []

@@ -74,11 +74,9 @@ class Loader:
             for view in self.app.views:
                 if view.name == view_name:
                     sequenced_views.append(view)
-
         return sequenced_views
 
     def create_views(self):
-
         self.app.views = self._sequence_views()
 
         with self.conn.cursor() as cursor:

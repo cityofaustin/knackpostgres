@@ -89,8 +89,7 @@ class FormulaField(FieldDef):
             FROM {self.rel_table_view_name}
             JOIN {self.reference_table_name} 
             ON {self.reference_table_name}.{self.rel_table_name}_id = {self.rel_table_view_name}.id
-            JOIN {self.host_table_name}
-            ON {self.reference_table_name}.{self.host_table_name}_id = {self.host_table_name}.id)
+            AND {self.reference_table_name}.{self.host_table_name}_id = {self.host_table_name}.id)
         """
 
     def _one_to_many_formula(self, app):
