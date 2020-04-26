@@ -57,7 +57,7 @@ class ConcatenationField(FieldDef):
             except IndexError:
                 continue
 
-        elements = elements + [f"'{postfix}'"] if postfix[0] != "" else elements
+        elements = elements + [f"'{postfix[0]}'"] if postfix[0] != "" else elements
 
         return elements
 
