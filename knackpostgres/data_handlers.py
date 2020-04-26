@@ -2,7 +2,7 @@ from .constants import PG_NULL
 import json
 
 class DataHandlers:
-    """ Translate Knack record values to destination DB values """
+    """ Handlers for translating Knack record values to destination DB values """
 
     def __repr__(self):
         return f"<Handler type=`{self.type}` name=`{self.handler.__name__}`>"
@@ -66,13 +66,13 @@ class DataHandlers:
     def _image_handler(self, val):
         # image will be a url or key/val pair
         if val == []:
-            return ""
+            return PG_NULL
 
         try:
-            return val.get("url")
+            return val.get("url").strip() # noticed some leading white space in data tracker
 
         except AttributeError:
-            return val.strip()  # noticed some leading white space in data tracker
+            return val.strip()  
 
     def _date_time_handler(self, val):
         if val == "":
