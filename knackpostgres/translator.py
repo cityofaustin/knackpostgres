@@ -7,13 +7,27 @@ from .many_to_many_field import ManyToManyField
 from .data_handlers import DataHandlers
 from .constants import PG_NULL
 
-""" under construction """
 
-IGNORE_FIELD_TYPES = ["concatenation", "max", "min", "count", "sum", "average", "signature", "equation"]
+IGNORE_FIELD_TYPES = [
+    "concatenation",
+    "max",
+    "min",
+    "count",
+    "sum",
+    "average",
+    "signature",
+    "equation",
+]
+
 
 class Translator:
+    """
+    Translate Knack records to destination postgresql schema. Generate insert and update
+    statements data loading.
+    """
+
     def __repr__(self):
-        return f"<Translator {self.knack.obj}> to {self.table.name_postgres}"
+        return f"<Translator {self.knack.obj} to {self.table.name_postgres}>"
 
     def __init__(self, knack, table):
         # where knack is a knackpy.Knack object and table is a Table class instance
@@ -30,7 +44,7 @@ class Translator:
         self.connection_data = self._extract_one_to_many_connections()
         self.connection_data += self._extract_many_to_many_connections()
         self._drop_connection_fields()
-    
+
     def connections_sql(self):
         if not self.connection_data:
             return []
@@ -50,37 +64,66 @@ class Translator:
             WHERE knack_id = '{kwargs["knack_id"]}';"""
 
     def _extract_one_to_many_connections(self):
-        
-        conn_fields = {field.name_postgres: field for field in self.table.fields if isinstance(field, ManyToOneField)}
-        
+
+        conn_fields = {
+            field.name_postgres: field
+            for field in self.table.fields
+            if isinstance(field, ManyToOneField)
+        }
+
         if not conn_fields:
             return []
 
         conn_data = []
-        
+
         for record in self.records:
             for field in record.keys():
                 if field in conn_fields:
                     vals = record[field]
                     rel_table_name = conn_fields[field].rel_table_name
-                    
+
                     if isinstance(vals, list):
                         for val in vals:
-                            conn_data.append(self._connection_record(field, record["knack_id"], val["id"], rel_table_name))
+                            conn_data.append(
+                                self._connection_record(
+                                    field, record["knack_id"], val["id"], rel_table_name
+                                )
+                            )
                     else:
                         print("single one!!!!!")
-                        conn_data.append(self._connection_record(field, record["knack_id"], vals["id"], rel_table_name))
-        
+                        conn_data.append(
+                            self._connection_record(
+                                field, record["knack_id"], vals["id"], rel_table_name
+                            )
+                        )
 
         return conn_data
 
-    def _connection_record(self, field_name, knack_id, conn_record_id, rel_table_name, reference_table_name=None):
-        return {"host_table_name": self.table.name_postgres, "field_name": field_name, "knack_id": knack_id, "conn_record_id": conn_record_id, "rel_table_name": rel_table_name, "reference_table_name": reference_table_name}
+    def _connection_record(
+        self,
+        field_name,
+        knack_id,
+        conn_record_id,
+        rel_table_name,
+        reference_table_name=None,
+    ):
+        return {
+            "host_table_name": self.table.name_postgres,
+            "field_name": field_name,
+            "knack_id": knack_id,
+            "conn_record_id": conn_record_id,
+            "rel_table_name": rel_table_name,
+            "reference_table_name": reference_table_name,
+        }
 
     def _drop_connection_fields(self):
         # we handle conenciton fields with udpate statements
         # so drop them to keep them out of view of loader.insert_each
-        conn_fieldnames = {field.name_postgres for field in self.table.fields if isinstance(field, ManyToOneField) or isinstance(field, ManyToManyField)}
+        conn_fieldnames = {
+            field.name_postgres
+            for field in self.table.fields
+            if isinstance(field, ManyToOneField) or isinstance(field, ManyToManyField)
+        }
 
         for record in self.records:
             for fname in conn_fieldnames:
@@ -92,11 +135,15 @@ class Translator:
 
     def _extract_many_to_many_connections(self):
         # todo: handle these fields
-        conn_fields = {field.name_postgres: field for field in self.table.fields if isinstance(field, ManyToManyField)}
+        conn_fields = {
+            field.name_postgres: field
+            for field in self.table.fields
+            if isinstance(field, ManyToManyField)
+        }
 
         if not conn_fields:
             return []
-        
+
         conn_data = []
 
         for record in self.records:
@@ -107,14 +154,30 @@ class Translator:
                     reference_table_name = conn_fields[field].reference_table_name
                     if isinstance(vals, list):
                         for val in vals:
-                            conn_data.append(self._connection_record(field, record["knack_id"], val["id"], rel_table_name, reference_table_name=reference_table_name))
+                            conn_data.append(
+                                self._connection_record(
+                                    field,
+                                    record["knack_id"],
+                                    val["id"],
+                                    rel_table_name,
+                                    reference_table_name=reference_table_name,
+                                )
+                            )
                     else:
                         print("single one!!!!!")
-                        conn_data.append(self._connection_record(field, record["knack_id"], vals["id"], rel_table_name, reference_table_name=reference_table_name))
+                        conn_data.append(
+                            self._connection_record(
+                                field,
+                                record["knack_id"],
+                                vals["id"],
+                                rel_table_name,
+                                reference_table_name=reference_table_name,
+                            )
+                        )
         return conn_data
 
     def _insert_statement_many_to_many(self, **kwargs):
-        
+
         return f"""
             INSERT INTO {kwargs["reference_table_name"]} ({kwargs["host_table_name"]}_id, {kwargs["rel_table_name"]}_id) VALUES (
                 (SELECT id FROM {kwargs["host_table_name"]} WHERE knack_id = '{kwargs["knack_id"]}'),
@@ -162,11 +225,13 @@ class Translator:
 
     def _replace_raw_fieldnames(self):
         """
-        For any Knack field that has both a "raw" field, use the raw field and drop the
-        non-raw field
+        For any Knack field that has both a "raw" and formatted field, use the raw field and drop the
+        formated (non-raw) field
         """
 
         # sample the first record to get all fieldnames
+        # todo: this assumes all records have all fields, which is not gauraunteed
+        # inspect knack data to hardcode which fields have raw fields
         record = self.knack.data_raw[0]
 
         raw_fields = [
@@ -240,12 +305,11 @@ class Translator:
 
         return new_records
 
-
     def to_sql(self, path="data"):
         path = Path.cwd() / path
         path.mkdir(exist_ok=True)
         self.fname = path / (self.table.name_postgres + ".sql")
-        
+
         statements = []
 
         with open(self.fname, "w") as fout:
@@ -255,15 +319,15 @@ class Translator:
                 columns = ", ".join(columns)
 
                 values = ", ".join([f"'{val}'" for key, val in record.items()])
-            
+
                 sql = f"""INSERT INTO {self.table.name_postgres} ({columns}) VALUES\n({values});\n\n"""
-            
+
                 sql = sql.replace(f"'{PG_NULL}'", "NULL")
-            
+
                 fout.write(sql)
                 statements.append(sql)
 
-        logging.info(f"{self.fname} - {len(self.records)} records")    
+        logging.info(f"{self.fname} - {len(self.records)} records")
         self.sql = statements
 
     def to_csv(self, records=None, path="data"):
@@ -279,9 +343,11 @@ class Translator:
 
             self.fieldnames = [field for field in records.keys()]
 
-            writer = csv.DictWriter(fout, fieldnames=self.fieldnames, quotechar="'", delimiter='|')
+            writer = csv.DictWriter(
+                fout, fieldnames=self.fieldnames, quotechar="'", delimiter="|"
+            )
 
-            # we don't write the header. because postgresql 
+            # we don't write the header. because postgresql
             # doesn't want it. you can fetch them from self.fieldnames
             # writer.writeheader()
 
