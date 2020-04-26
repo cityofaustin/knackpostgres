@@ -21,6 +21,7 @@ class FormulaField(FieldDef):
         else:
             return None
 
+
     def _handle_custom_equation(self, app):
         return Equation(self, self.table)
 

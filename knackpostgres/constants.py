@@ -61,7 +61,7 @@ FIELD_DEFINITIONS = {
         "is_standard_equation": False,
     },
     "concatenation": {
-        "type_postgres": None,
+        "type_postgres": "TEXT",
         "is_formula": True,
         "is_standard_equation": False,
     },

@@ -1,6 +1,7 @@
 import pdb
 
 from .constants import TAB
+from .concatenation_field import ConcatenationField
 from .formula_field import FormulaField
 
 class View:
@@ -16,19 +17,23 @@ class View:
 
         self.name = f"{table.name_postgres}_view"
 
-        self.formulaFields = [field for field in self.table.fields if isinstance(field, FormulaField) and field.sql]
+        self.formula_fields = [field for field in self.table.fields if isinstance(field, FormulaField) and field.sql]
+        
+        self.concat_fields = [field for field in self.table.fields if isinstance(field, ConcatenationField) and field.sql]
         
         self._set_dependencies()
 
-        self.sql = self.to_sql()
+        self.sql = self._to_sql()
 
     def _set_dependencies(self):
-        self.depends_on = [field.rel_table_name for field in self.formulaFields]
+        self.depends_on = [field.rel_table_name for field in self.formula_fields]
 
-    def to_sql(self):
+    def _to_sql(self):
         sql = [f"SELECT {self.table.name_postgres}.*"]
         
-        sql += [field.sql for field in self.formulaFields]
+        sql += [field.sql for field in self.formula_fields]
+
+        sql += [field.sql for field in self.concat_fields]
         
         sql = f",\n{TAB}".join(sql)
 

@@ -1,4 +1,5 @@
 from .field_def import FieldDef
+from .concatenation_field import ConcatenationField
 from .formula_field import FormulaField
 from .many_to_one_field import ManyToOneField
 from .many_to_many_field import ManyToManyField
@@ -65,6 +66,8 @@ class Table:
 
         classified = self._classify_fields()
 
+        concats = [ConcatenationField(field, self) for field in classified["concats"] ]
+
         formula_fields = [FormulaField(field, self) for field in classified["formulas"] ]
 
         many_to_one_fields = [ManyToOneField(field, self) for field in classified["connections"]["many_to_one"]]
@@ -73,10 +76,11 @@ class Table:
 
         standard_fields = [StandardField(field, self) for field in classified["standard"]]
 
-        return formula_fields + many_to_one_fields + many_to_many_fields + standard_fields
+        return concats + formula_fields + many_to_one_fields + many_to_many_fields + standard_fields
 
     def _classify_fields(self):
         fields = {
+            "concats" : [],
             "formulas": [],
             "connections": {
                 "many_to_one": [],
@@ -86,7 +90,10 @@ class Table:
         }
 
         for field in self.fields:
-            if self._is_formula(field):
+            if field["type"] == "concatenation":
+                fields["concats"].append(field)
+
+            elif self._is_formula(field):
                 fields["formulas"].append(field)
 
             elif self._is_connection(field):
@@ -119,7 +126,7 @@ class Table:
         fields_sql = [
             field.to_sql()
             for field in self.fields
-            if not type(field) in [FormulaField, ManyToManyField]
+            if not type(field) in [ConcatenationField, FormulaField, ManyToManyField]
         ]
 
         fields_sql = f",\n{TAB}".join(fields_sql)

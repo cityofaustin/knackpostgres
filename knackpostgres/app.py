@@ -9,6 +9,7 @@ import pdb
 from knackpy import get_app_data
 
 from .formula_field import FormulaField
+from .concatenation_field import ConcatenationField
 from .constants import TAB
 from .table import Table
 from .reference_table import ReferenceTable
@@ -63,13 +64,14 @@ class App:
     # def print_stuff(self):
     #     for obj in self.objects:
     #         for field in obj["fields"]:
-    #             if field.get("rules"):
-    #                 for rule in field["rules"]:
-    #                     print(f"criteria: {rule['criteria']}")
-    #                     print(f"values: {rule['values']}")
+    #             # if field.get("rules"):
+    #             #     for rule in field["rules"]:
+    #             #         print(f"criteria: {rule['criteria']}")
+    #             #         print(f"values: {rule['values']}")
 
-                # if field["type"] == "equation":
-                #     print(field["format"]["equation"])
+    #             if field["type"] == "concatenation":
+    #                 print(field["format"]["equation"])
+    #     import pdb; pdb.set_trace()
 
     def to_sql(self, path="sql"):
         """
@@ -155,9 +157,9 @@ class App:
     def _handle_formulae(self):
         for table in self.tables:
             for field in table.fields:
-                if isinstance(field, FormulaField):
+                if isinstance(field, FormulaField) or isinstance(field, ConcatenationField):
                     field.handle_formula(self)
-
+                    
         return self.tables
 
     def find_table_from_object_key(self, key, return_attr=None):
