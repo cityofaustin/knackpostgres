@@ -36,9 +36,9 @@ class ManyToOneField(ConnField):
         and passed down to the parent table and then fields, because
         relationships reach across tables in the app.
 
-        this is done after all fields (except formulae) have been
-        instanciated, because we need to reference the postgres
-        field and table names of the relationships.
+        this must be done after all fields (except formulae) have been
+        instanciated, because we reference postgres field and table
+        outside of the host table.
 
         the `data_type` of these fields is always NUMERIC, and is 
         defined in .constanstants.FIELD_DEFINITIONS

@@ -3,7 +3,7 @@ from .constants import FIELD_DEFINITIONS
 
 
 class ManyToManyField(ConnField):
-    """ A Knack foruma field definition wrapper """
+    """ Attribute setter for many-to-many connection fields """
     
     def __init__(self, data, table):
         super().__init__(data, table)
