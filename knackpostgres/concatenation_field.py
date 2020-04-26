@@ -12,7 +12,7 @@ SEARCH_EXPRS = {
 
 class ConcatenationField(FieldDef):
     """
-    Field wrapper/parser of Knack concatenation (aka `text handle_formula) fields
+    Field wrapper/parser of Knack concatenation (aka `text formula`) fields
     """
 
     def __init__(self, data, table):
@@ -49,7 +49,7 @@ class ConcatenationField(FieldDef):
 
     def _arrange_elements(self, fields, prefix, inner, postfix):
         elements = [f"'{prefix[0]}'"] if prefix[0] != "" else []
-        
+
         for i, field in enumerate(fields):
             elements.append(f"{field}")
             try:
