@@ -25,7 +25,7 @@ class ManyToOneField(ConnField):
     def handle_relationship(self, host_table_name, rel_table_name):
         """
         one to many and many to one relationships are handled here, simply
-        by adding  column to the "host" table that reference the primary key
+        by adding a column to the "host" table that reference the primary key
         field of the related table. we're not using foreign keys.
     
         if the "host" table is the parent table, we append the array `[]` 
@@ -37,7 +37,7 @@ class ManyToOneField(ConnField):
         relationships reach across tables in the app.
 
         this must be done after all fields (except formulae) have been
-        instanciated, because we reference postgres field and table
+        instanciated, because we reference postgres fields and tables
         outside of the host table.
 
         the `data_type` of these fields is always NUMERIC, and is 

@@ -5,7 +5,6 @@ class Relationship:
     """
     A SQL translator for Knack `connection` fields <3
     """
-
     def __repr__(self):
         return f"<Relationship {self.name}>"
 

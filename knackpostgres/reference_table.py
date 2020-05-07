@@ -2,6 +2,9 @@ from .table import Table
 
 
 class ReferenceTable(Table):
+    """
+    Create a `reference` or `associative` table in which to store many-to-many relationship references.
+    """
     def __init__(self, data):
         super().__init__(data)
         
