@@ -24,13 +24,13 @@ CONCATENATION = r"""
     
     _OPEN_PARENS: /\(/
 
-    method_name_one_param: /(trim|trimLeft|trimRight|length|lower|upper|capitalize|random|numberToWords)/ -> method_name
+    method_name_one_param: /(trim|trimLeft|trimRight|length|lower|upper|capitalize|random|numberToWords|getDateMonthOfYearName|getDateDayOfWeekName)/ -> method_name
 
     method_name_two_param: /(left|right|mid|regexReplace|extractRegex|replace)/ -> method_name
 
-    text_before_method: /.+?(?=((trim|length|lower|left)\())/ -> text_content
+    text_before_method: /.+?(?=((trim|trimLeft|trimRight|length|lower|upper|capitalize|random|numberToWords|getDateMonthOfYearName|getDateDayOfWeekName|left|right|mid|regexReplace|extractRegex|replace)\())/ -> text_content
     
-    text_without_method: /.+/ -> text_content
+    text_without_method: /.+/  -> text_content
     
     text_before_comma: /.+?(?=,)/ -> text_content
   
