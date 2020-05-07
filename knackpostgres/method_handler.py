@@ -24,11 +24,11 @@ class MethodHandler:
     def handle_method(self):
         return self.handler(**self.handler_args)
 
-    def _get_month_name(self, dt):
-        return f"to_char({dt}, 'Month')"
+    def _get_month_name(self, sql_name=None):
+        return f"{sql_name}({self.method.args[0]}, 'Month')"
 
-    def _get_day_of_week_name(self, dt):
-        return f"to_char({dt}, 'Day')"
+    def _get_day_of_week_name(self, sql_name=None):
+        return f"{sql_name}({self.method.args[0]}, 'Day')"
 
     def _default_handler(self, sql_name=None):
         args = ", ".join(self.method.args)
