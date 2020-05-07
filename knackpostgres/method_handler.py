@@ -14,15 +14,15 @@ class MethodHandler:
     def __init__(self, method):
 
         self.method = method
-        self.args = METHOD_DEFINITIONS[self.method.name]["args"]
+        self.handler_args = METHOD_DEFINITIONS[self.method.name]["args"]
         self.handler = getattr(self, METHOD_DEFINITIONS[self.method.name]["handler"])
 
     def _join_method_sql(self, elements):
-        params = ", ".join(elements["params"])
-        return f"{elements['name']}({params})"
+        args = ", ".join(elements["args"])
+        return f"{elements['name']}({args})"
 
     def handle_method(self):
-        return self.handler(**self.args)
+        return self.handler(**self.handler_args)
 
     def _get_month_name(self, dt):
         return f"to_char({dt}, 'Month')"
@@ -31,6 +31,6 @@ class MethodHandler:
         return f"to_char({dt}, 'Day')"
 
     def _default_handler(self, sql_name=None):
-        args = ", ".join(self.method.params)
+        args = ", ".join(self.method.args)
         sql = f"{sql_name}({args})"
         return sql

@@ -10,15 +10,15 @@ CONCATENATION = r"""
 
     method.1: (_method_with_two_param | _method_with_one_param)
     
-    _method_with_two_param.1: method_name_two_param _OPEN_PARENS first_param _COMMA second_param _CLOSED_PARENS
+    _method_with_two_param.1: method_name_two_param _OPEN_PARENS first_arg _COMMA second_arg _CLOSED_PARENS
 
-    _method_with_one_param.2: method_name_one_param _OPEN_PARENS only_param _CLOSED_PARENS
+    _method_with_one_param.2: method_name_one_param _OPEN_PARENS only_arg _CLOSED_PARENS
 
-    first_param: (method | text_before_comma)+
+    first_arg: (method | text_before_comma)+
     
-    second_param: (method | text_before_method | text_before_closed_parens)+
+    second_arg: (method | text_before_method | text_before_closed_parens)+
 
-    only_param: (method | text_before_method | text_before_closed_parens)+  // identical to second param, but makes parsing the tree easier to distinguish between them
+    only_arg: (method | text_before_method | text_before_closed_parens)+  // identical to second_arg, but makes parsing the tree easier to distinguish between them
 
     _CLOSED_PARENS: /\)/
     

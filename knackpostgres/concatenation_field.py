@@ -8,6 +8,7 @@ from .method_handler import MethodHandler
 FIELD_SEARCH_EXCLUDE_BRACES = "(?:{)(field_\d+)(?:})"
 FIELD_SEARCH_INCLUDE_BRACES = "({field_\d+})"
 
+# TODO: cross-table field references
 
 class ConcatenationField(FieldDef):
     """
@@ -29,13 +30,6 @@ class ConcatenationField(FieldDef):
         self._process_methods()
         self._gather_all_sql()
         self._to_sql()
-
-        # if "." in self.equation:
-        #     # complex concat, with connection calls
-        #     # TODO
-        #     return None
-        pdb.set_trace()
-
         return self
 
     def _process_methods(self):
@@ -53,40 +47,40 @@ class ConcatenationField(FieldDef):
             elif node.data == "method":
                 self._handle_method(node)
 
-    def _parse_param(self, param):
+    def _parse_arg(self, arg):
         """
-        Parse the parameters of a Knack formula field string method.
-        Parameters can be a combination of arbitrary and other string methods
+        Parse the arguments of a Knack formula field string method.
+        Args can be a combination of arbitrary and other string methods
         """
-        if param.data == "second_param" and len(param.children) == 1:
-            # try to convert second param to an int, and if so return it as a stringified number
+        if arg.data == "second_arg" and len(arg.children) == 1:
+            # try to convert second arg to an int, and if so return it as a stringified number
             try:
-                return [str(int(param.children[0].children[0].value))]
+                return [str(int(arg.children[0].children[0].value))]
             except:
                 pass
 
-        param_substrings = []
+        arg_substrings = []
 
-        for elem in param.children:
-            param_type = elem.data
+        for elem in arg.children:
+            arg_type = elem.data
 
-            if param_type == "text_content":
+            if arg_type == "text_content":
                 text_content = elem.children[0].value
                 substrings = self._parse_fieldnames(text_content)
 
-                param_substrings += substrings
+                arg_substrings += substrings
 
-            elif param_type == "method":
-                param_substrings.append(elem.sql)
+            elif arg_type == "method":
+                arg_substrings.append(elem.sql)
 
-        return param_substrings
+        return arg_substrings
 
     def _handle_method(self, method):
         """
         Translate a knack string method to sql. 
         Because we're iterating 
         """
-        method.params = []
+        method.args = []
 
         for elem in method.children:
             name = elem.data
@@ -94,8 +88,8 @@ class ConcatenationField(FieldDef):
             if name == "method_name":
                 method.name = elem.children[0].value
 
-            elif "param" in name:
-                method.params += self._parse_param(elem)
+            elif "arg" in name:
+                method.args += self._parse_arg(elem)
 
         handler = MethodHandler(method)
         method.sql = handler.handle_method()
