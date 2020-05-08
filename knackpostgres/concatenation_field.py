@@ -4,10 +4,24 @@ from .field_def import FieldDef
 from .parsers import get_parser
 from .method_handler import MethodHandler
 
-FIELD_SEARCH_EXCLUDE_BRACES = "(?:{)(field_\d+)(?:})"
-FIELD_SEARCH_INCLUDE_BRACES = "({field_\d+})"
 
-# TODO: cross-table field references
+# todo: are you actually surfacing concatenated text in nested functions?
+# i think not
+
+
+# Regex search expressions
+# match: field_xx
+SIMPLE_FIELD_SEARCH_EXCLUDE_BRACES = "(?:{)(field_\d+)(?:})"
+
+# match: {field_xx}
+SIMPLE_FIELD_SEARCH_INCLUDE_BRACES = "({field_\d+})"
+
+# match: {field_xx.field_xx}
+CONNECTED_FIELD_SEARCH_INCLUDE_BRACES = "({field_\d+.field_\d+})"
+
+# match: field_xx.field_xx
+CONNECTED_FIELD_SEARCH_EXCLUDE_BRACES = "(?:{)(field_\d+.field_\d+)(?:})"
+
 
 class ConcatenationField(FieldDef):
     """
@@ -20,10 +34,12 @@ class ConcatenationField(FieldDef):
         super().__init__(data, table)
 
         self.equation = self.format_knack.get("equation")
+        # complex eq field is connection_field.field_id on dest table
+        # todo: consider when the foreign table is the host
 
     def handle_formula(self, app, grammar="concatenation"):
         self.app = app
-        self.fieldmap = self._get_fieldmap()
+        self._get_fieldmap()
         self.parser = get_parser(grammar)
         self.tree = self.parser.parse(self.equation)
         self._process_methods()
@@ -115,21 +131,42 @@ class ConcatenationField(FieldDef):
         Generate an index of knack fieldames and their postgres fieldnames.
         We have to look across all tables in the app to accomplish this, because
         formula fields may reference fields in other tables.
-        """
-        fieldmap = {}
 
-        knack_fieldnames = re.findall(FIELD_SEARCH_EXCLUDE_BRACES, self.equation)
+        Also, collect all the table names involved in this field, so we can include
+        them in our SQL statement
+        """
+        self.fieldmap = {}
+        self.tables = []
+        """
+        Extract simple fields (they exist on the same table as the formula field)
+        """
+        fieldnames = re.findall(SIMPLE_FIELD_SEARCH_EXCLUDE_BRACES, self.equation)
+        
+        """
+        Extract connection fields, which take the format of field_xx.field_yy, where field_xx is
+        the connection field name and field_yy is the destination fieldname.
+        we only need field_yy, because it uniquely identifies the field in the app.
+        """
+        fieldnames += re.findall(CONNECTED_FIELD_SEARCH_EXCLUDE_BRACES, self.equation)
 
         # reduce to unique
-        knack_fieldnames = list(set(knack_fieldnames))
+        fieldnames = list(set(fieldnames))
 
-        for fieldname in knack_fieldnames:
-            name_postgres = self.app.find_field_from_field_key(
-                fieldname, return_attr="name_postgres"
-            )
-            fieldmap[fieldname] = name_postgres
+        for fieldname in fieldnames:
+            try:
+                # attempt to handle connected field
+                fieldname = fieldname.split(".")[1]
+            except IndexError:
+                pass
 
-        return fieldmap
+            field = self.app.find_field_from_field_key(fieldname)
+
+            if field.table.name not in self.tables:
+                self.tables.append(field.table.name)
+
+            self.fieldmap[fieldname] = f"{field.table.name}.{field.name_postgres}"
+
+        return self
 
     def _parse_fieldnames(self, text_content):
         """
@@ -139,7 +176,7 @@ class ConcatenationField(FieldDef):
         we include braces in our field search, because we must know which substrings are syntactical {field_xx}
         calls, or if for some reason your text formula has a non-field value like `field_99` :|        
         """
-        field_search = re.compile(FIELD_SEARCH_INCLUDE_BRACES)
+        field_search = re.compile(SIMPLE_FIELD_SEARCH_INCLUDE_BRACES)
 
         # Find the fieldnames in the string.
         try:
