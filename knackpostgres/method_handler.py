@@ -31,6 +31,6 @@ class MethodHandler:
         return f"{sql_name}({self.method.args[0]}, 'Day')"
 
     def _default_handler(self, sql_name=None):
-        args = ", ".join(self.method.args)
-        sql = f"{sql_name}({args})"
+        args_ = ", ".join(self.method.args)
+        sql = f"{sql_name}({args_})"
         return sql
