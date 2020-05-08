@@ -10,17 +10,11 @@ from .method_handler import MethodHandler
 
 
 # Regex search expressions
-# match: field_xx
-SIMPLE_FIELD_SEARCH_EXCLUDE_BRACES = "(?:{)(field_\d+)(?:})"
+# match: field_xx or field_xx.field_xx (if it's enclosed in braces)
+FIELD_SEARCH_EXCLUDE_BRACES = "(?:{)(field_\d+)(?:})|(?:{)(field_\d+.field_\d+)(?:})"
 
-# match: {field_xx}
-SIMPLE_FIELD_SEARCH_INCLUDE_BRACES = "({field_\d+})"
-
-# match: {field_xx.field_xx}
-CONNECTED_FIELD_SEARCH_INCLUDE_BRACES = "({field_\d+.field_\d+})"
-
-# match: field_xx.field_xx
-CONNECTED_FIELD_SEARCH_EXCLUDE_BRACES = "(?:{)(field_\d+.field_\d+)(?:})"
+# match: {field_xx} or {field_xx.field_xx}
+FIELD_SEARCH_INCLUDE_BRACES = "({field_\d+})|({field_\d+.field_\d+})"
 
 
 class ConcatenationField(FieldDef):
@@ -34,8 +28,10 @@ class ConcatenationField(FieldDef):
         super().__init__(data, table)
 
         self.equation = self.format_knack.get("equation")
-        # complex eq field is connection_field.field_id on dest table
         # todo: consider when the foreign table is the host
+        # todo: i think you need to use alter views for all formula fields,
+        # as they can be cross-dependent. but you can first test if your dependency logic is working
+        # for connection formulae, you need to do (SELLECT ..... WHERE .... FROM)
 
     def handle_formula(self, app, grammar="concatenation"):
         self.app = app
@@ -64,13 +60,13 @@ class ConcatenationField(FieldDef):
 
     def _parse_arg(self, arg):
         """
-        Parse the arguments of a Knack formula field string method.
-        Args can be a combination of arbitrary and other string methods
+        Parse an argument of a Knack formula field string method.
+        Args can be a combination of arbitrary strings and other string methods
         """
         if arg.data == "second_arg" and len(arg.children) == 1:
             # try to convert second arg to an int, and if so return it as a stringified number
             try:
-                return [str(int(arg.children[0].children[0].value))]
+                return str(int(arg.children[0].children[0].value))
             except:
                 pass
 
@@ -88,7 +84,7 @@ class ConcatenationField(FieldDef):
             elif arg_type == "method":
                 arg_substrings.append(elem.sql)
 
-        return arg_substrings
+        return f"CONCAT({', '.join(arg_substrings)})" if len(arg_substrings) > 1 else arg_substrings[0]
 
     def _handle_method(self, method):
         """
@@ -104,7 +100,7 @@ class ConcatenationField(FieldDef):
                 method.name = elem.children[0].value
 
             elif "arg" in name:
-                method.args += self._parse_arg(elem)
+                method.args.append(self._parse_arg(elem))
 
         handler = MethodHandler(method)
         method.sql = handler.handle_method()
@@ -134,20 +130,21 @@ class ConcatenationField(FieldDef):
 
         Also, collect all the table names involved in this field, so we can include
         them in our SQL statement
+
+        Also, `uses_connection` as true/false. We need to use a different SQL syntax
+        for a formula that relies on connection fields.
         """
+        self.uses_connection = False
         self.fieldmap = {}
         self.tables = []
-        """
-        Extract simple fields (they exist on the same table as the formula field)
-        """
-        fieldnames = re.findall(SIMPLE_FIELD_SEARCH_EXCLUDE_BRACES, self.equation)
+        self.connection_fields = []
+
+        fieldname_matches = re.findall(FIELD_SEARCH_EXCLUDE_BRACES, self.equation)
         
-        """
-        Extract connection fields, which take the format of field_xx.field_yy, where field_xx is
-        the connection field name and field_yy is the destination fieldname.
-        we only need field_yy, because it uniquely identifies the field in the app.
-        """
-        fieldnames += re.findall(CONNECTED_FIELD_SEARCH_EXCLUDE_BRACES, self.equation)
+        # and we need to unpack the results, which are touples of capturing groups. a tubple will
+        # either have a value in first position (for normal field) or second position (connection field)
+        fieldnames = [field[0] for field in fieldname_matches if field[0]]
+        fieldnames += [field[1] for field in fieldname_matches if field[1]]
 
         # reduce to unique
         fieldnames = list(set(fieldnames))
@@ -155,16 +152,26 @@ class ConcatenationField(FieldDef):
         for fieldname in fieldnames:
             try:
                 # attempt to handle connected field
-                fieldname = fieldname.split(".")[1]
+                conn_fieldname = fieldname.split(".")[0]
+                target_fieldname = fieldname.split(".")[1]
+                self.uses_connection = True
+                
             except IndexError:
+                target_fieldname = fieldname
+                conn_fieldname = None
                 pass
 
-            field = self.app.find_field_from_field_key(fieldname)
+            target_field = self.app.find_field_from_field_key(target_fieldname)
 
-            if field.table.name not in self.tables:
-                self.tables.append(field.table.name)
+            if conn_fieldname:
+                conn_field = self.app.find_field_from_field_key(conn_fieldname)
 
-            self.fieldmap[fieldname] = f"{field.table.name}.{field.name_postgres}"
+                self.connection_fields.append(conn_field)
+                
+            if target_field.table.name not in self.tables:
+                self.tables.append(target_field.table.name)
+
+            self.fieldmap[fieldname] = f"{target_field.table.name}.{target_field.name_postgres}"
 
         return self
 
@@ -176,21 +183,36 @@ class ConcatenationField(FieldDef):
         we include braces in our field search, because we must know which substrings are syntactical {field_xx}
         calls, or if for some reason your text formula has a non-field value like `field_99` :|        
         """
-        field_search = re.compile(SIMPLE_FIELD_SEARCH_INCLUDE_BRACES)
 
-        # Find the fieldnames in the string.
+        #         try:
+        #     fieldnames = [f"{{fieldname}}" for fieldname in self.fieldmap.keys()]
+
+        # except TypeError:
+        #     # this content is a non-string value, presuming integer
+        #     return [text_content]
+
+        field_search = re.compile(FIELD_SEARCH_INCLUDE_BRACES)
+
+        # fetch the known fieldnames in this formula from the fieldmap, adding braces as mentioned above
         try:
-            fieldnames = field_search.findall(text_content)
-        except TypeError:
-            # this content is a non-string value, presuming integer
-            return [text_content]
+            fieldnames = [f"{{{fieldname}}}" for fieldname in self.fieldmap.keys()]
+        except AttributeError:
+            print("no fieldnames")
+            print(self.equation)
+            pass
 
         # split the string into it's components of fieldnames and non-fieldnames
         substrings = field_search.split(text_content)
 
+        bob = field_search.findall(text_content)
+        
+        # remove None values and empty strings, an artecfact of regex.findall
+        substrings = [sub for sub in substrings if sub != "" and sub != None]
+
         # replace the fieldname elements with their postgres fieldname
         # wrap non-fieldnames in single quotes, for sql
         for i, sub in enumerate(substrings):
+
             if sub in fieldnames:
                 substrings[i] = self.fieldmap[sub.replace("{", "").replace("}", "")]
             else:
@@ -201,10 +223,46 @@ class ConcatenationField(FieldDef):
         # remove empty strings, which are an artefact of regex splitting
         return [sub for sub in substrings if sub != "''"]
 
+
+    def _add_select_where_statements(self):
+
+        views = [f"{table_name}_view" for table_name in self.tables]
+
+        where_clauses = []
+
+        for conn_field in self.connection_fields:
+            
+            dest_join_field = conn_field.name_postgres
+
+            if self.table.name_postgres == conn_field.name_postgres:
+                rel_table_name = conn_field.rel_table_name
+            else:
+                rel_table_name = conn_field.table.name_postgres
+        
+            rel_table_name = f"{rel_table_name}_view"
+
+            where_clause = f"""WHERE {rel_table_name}.{dest_join_field} = {self.table.name}.id"""
+            where_clauses.append(where_clause)
+
+        all_where_clauses = " AND ".join(where_clauses)
+        view_names = ", ".join(views)
+
+        return f"""(SELECT {self.sql} FROM {view_names} {all_where_clauses}) AS {self.name_postgres}"""
+
     def _to_sql(self):
-        """
+        """ 
         At this point, every node in our tree has a `sql` attribute, they merely need
         to be concatenated.
         """
-        self.sql = f"""CONCAT({', '.join(self.tree.sql)}) AS {self.name_postgres}"""
+        
+        self.sql = f"""CONCAT({', '.join(self.tree.sql)})"""
+
+        if (self.uses_connection):
+            self.sql = self._add_select_where_statements()
+        else:
+            self.sql = f"""{self.sql} AS {self.name_postgres}"""
+
         return self.sql
+
+
+        
