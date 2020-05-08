@@ -6,7 +6,7 @@ from lark import Lark
 
 # define grammars here, with the top level always named `values`
 CONCATENATION = r"""
-    values: (method | (text_before_method|text_without_method) )+
+    _values: (method | (text_before_method|text_without_method) )+
 
     method.1: (_method_with_two_param | _method_with_one_param)
     
@@ -14,11 +14,11 @@ CONCATENATION = r"""
 
     _method_with_one_param.2: method_name_one_param _OPEN_PARENS only_arg _CLOSED_PARENS
 
-    first_arg: (method | text_before_comma)+
+    first_arg: (_values | text_before_comma)+
     
-    second_arg: (method | text_before_method | text_before_closed_parens)+
+    second_arg: text_before_closed_parens
 
-    only_arg: (method | text_before_method | text_before_closed_parens)+  // identical to second_arg, but makes parsing the tree easier to distinguish between them
+    only_arg: _values | text_before_closed_parens
 
     _CLOSED_PARENS: /\)/
     
@@ -43,4 +43,4 @@ GRAMMAR = {"concatenation": CONCATENATION}
 
 
 def get_parser(grammar):
-    return Lark(GRAMMAR[grammar], start="values", debug=False, propagate_positions=True)
+    return Lark(GRAMMAR[grammar], start="_values", debug=False, propagate_positions=True)
