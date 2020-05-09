@@ -45,11 +45,11 @@ class App:
         self.obj_filter = obj_filter
 
         # fetch knack metadata
-        self.data = self._get_app_data()
+        self.metadata = self._get_app_data()
 
         # assign knack metadata to class attributes
-        for key in self.data:
-            setattr(self, key, self.data[key])
+        for key in self.metadata:
+            setattr(self, key, self.metadata[key])
 
         self.tables = self._handle_tables()
 
