@@ -16,6 +16,7 @@ from .reference_table import ReferenceTable
 from .view import View
 from .relationship import Relationship
 from .utils import valid_pg_name
+from .scene import Scene
 
 
 class App:
@@ -36,9 +37,12 @@ class App:
     def __repr__(self):
         return f"<App {self.name}> ({len(self.objects)} objects)"
 
-    def __init__(self, app_id):
+    def __init__(self, app_id, obj_filter=None):
 
         self.app_id = app_id
+
+        # optional include only object keys specified in filter
+        self.obj_filter = obj_filter
 
         # fetch knack metadata
         self.data = self._get_app_data()
@@ -57,20 +61,22 @@ class App:
 
         self._handle_formulae()
 
-        self.views = self._handle_views()
+        self.views = self._handle_views() # these are database views, not Knack "views" ;)
+
+        self.scenes = self._handle_scenes()
 
         logging.info(self)
 
     # def print_stuff(self):
     #     for obj in self.objects:
     #         for field in obj["fields"]:
-    #             # if field.get("rules"):
-    #             #     for rule in field["rules"]:
-    #             #         print(f"criteria: {rule['criteria']}")
-    #             #         print(f"values: {rule['values']}")
+    #             if field.get("rules"):
+    #                 for rule in field["rules"]:
+    #                     print(f"criteria: {rule['criteria']}")
+    #                     print(f"values: {rule['values']}")
 
-    #             if field["type"] == "concatenation":
-    #                 print(field["format"]["equation"])
+    #             # if field["type"] == "concatenation":
+    #             #     print(field["format"]["equation"])
     #     import pdb; pdb.set_trace()
 
     def to_sql(self, path="sql"):
@@ -101,7 +107,10 @@ class App:
         return get_app_data(self.app_id)
 
     def _handle_tables(self):
-        return [Table(obj) for obj in self.objects]
+        if self.obj_filter:
+            return [Table(obj) for obj in self.objects if obj["key"] in self.obj_filter]
+        else:
+            return [Table(obj) for obj in self.objects]
 
     def _handle_views(self):
         return [View(table) for table in self.tables]
@@ -201,3 +210,9 @@ class App:
 
         # no table found that contains this key
         return None
+
+    def _handle_scenes(self):
+        scenes = []
+        
+        for scene in self.scenes:
+            scenes.append(Scene(scene))

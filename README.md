@@ -32,7 +32,9 @@ $ pip install knackpostgres
 >>> from knackpostgres import App
 
 # find your app id: https://www.knack.com/developer-documentation/#find-your-api-key-amp-application-id
->>> app = App("myappidstring")
+
+# optionally include a list of object keys defining which objects to include
+>>> app = App("myappidstring", obj_filter=["obj_12", "obj_13"])
 ```
 
 If you want to execute the SQL commandsd manually, you can write the App's SQL commands to files:
