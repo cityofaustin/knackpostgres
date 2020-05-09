@@ -8,7 +8,6 @@ class FormulaField(FieldDef):
     
     def __init__(self, data, table):
         super().__init__(data, table)
-
     
     def handle_formula(self, app):
 
@@ -16,11 +15,11 @@ class FormulaField(FieldDef):
             self.sql = self._handle_standard_equation(app)
 
         elif self.type_knack == "equation":
+            # TODO
             self.sql = self._handle_custom_equation(app)
 
         else:
             return None
-
 
     def _handle_custom_equation(self, app):
         return Equation(self, self.table)

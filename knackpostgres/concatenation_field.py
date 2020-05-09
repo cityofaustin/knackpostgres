@@ -6,6 +6,7 @@ from .method_handler import MethodHandler
 
 
 # todo: handle many-to-many connections :/
+# todo: reference views instead of tables and create "alter view" statements
 
 # Regex search expressions
 # match: field_xx or field_xx.field_xx (if it's enclosed in braces)
