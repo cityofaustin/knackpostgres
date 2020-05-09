@@ -15,5 +15,3 @@ class ViewKnack:
         """
         for key in data:
             setattr(self, key + "_knack", data[key])
-
-        import pdb; pdb.set_trace()
