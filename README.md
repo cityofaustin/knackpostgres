@@ -59,7 +59,7 @@ If you want to explore the database with `psql`, open a separate terminal window
 docker run -it --rm --network host my-db-name psql -h localhost -U postgres
 ```
 
-### Implement Knack Database Schema in PostgreSQL
+### Deploy Knack Database Schema to PostgreSQL
 
 * Install [`psycopg2`](https://pypi.org/project/psycopg2/) in your Python environment.
 
@@ -89,5 +89,23 @@ Execute your `App`'s sql commands:
 ```python
 >>> loader.create_tables()
 
->>> loader.create_relationships()
+# read-only fields (formule & equations) are only available in views
+>>> loader.create_tables()
+
 ```
+
+### Knack Feature Coverage
+
+This is a work in progress. Currently supported Knack features include:
+
+All **connection field** types are supported, although self-connections are not well tested.
+
+**Address** and **Name** fields are supported and stored as `JSON` types.
+
+Standard **[formula fields](https://support.knack.com/hc/en-us/articles/226583008-Formulas)** are supported
+
+**Equation** fields are not yet supported.
+
+For **Concatentation (aka Text Formula)** fields, all **[Text Functions](https://support.knack.com/hc/en-us/articles/115005002328-Text-Formula-Functions)** are supported.
+
+The only supported **text formula** date functions are `getDateDayOfWeekName` and `getDateMonthOfYearName`. You can add support for others by writing your own [`MethodHandler`](https://github.com/cityofaustin/knackpostgres/blob/master/knackpostgres/method_handler.py) method.
