@@ -27,10 +27,12 @@ class ConcatenationField(FieldDef):
         super().__init__(data, table)
 
         self.equation = self.format_knack.get("equation")
-        # todo: consider when the foreign table is the host
-        # todo: i think you need to use alter views for all formula fields,
-        # as they can be cross-dependent. but you can first test if your dependency logic is working
-        # for connection formulae, you need to do (SELLECT ..... WHERE .... FROM)
+        """
+        todo: consider when the foreign table is the host
+        todo: i think you need to use alter views for all formula fields,
+        as they can be cross-dependent. but you can first test if your dependency
+        logic is working
+        """
 
     def handle_formula(self, app, grammar="concatenation"):
         self.app = app
@@ -51,6 +53,7 @@ class ConcatenationField(FieldDef):
         parts, translating each part to SQL syntax along the way.
         """
         for node in self.tree.iter_subtrees():
+            # these `.data` values are defined by the parser's grammar
             if node.data == "_values":
                 continue
 
@@ -108,8 +111,8 @@ class ConcatenationField(FieldDef):
     def _gather_all_sql(self):
         """
         At this point, all of the method nodes in our tree have a `sql` attribute, and
-        all that's left to do is to create the sql syntax for the top-level text
-        elements (which can be comprised of aribitrary strings or Knack field names, e.g. {field_101})
+        all that's left to do is to create the sql syntax for the top-level elements
+        (which can be comprised of aribitrary strings or Knack field names, e.g. {field_101})
         """
         self.tree.sql = []
 
@@ -129,11 +132,7 @@ class ConcatenationField(FieldDef):
 
         Also, collect all the table names involved in this field, so we can include
         them in our SQL statement
-
-        Also, `uses_connection` as true/false. We need to use a different SQL syntax
-        for a formula that relies on connection fields.
         """
-        self.uses_connection = False
         self.fieldmap = {}
         self.tables = []
         self.connection_fields = []
@@ -153,7 +152,6 @@ class ConcatenationField(FieldDef):
                 # attempt to handle connected field
                 conn_fieldname = fieldname.split(".")[0]
                 target_fieldname = fieldname.split(".")[1]
-                self.uses_connection = True
                 
             except IndexError:
                 target_fieldname = fieldname
