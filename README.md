@@ -97,8 +97,10 @@ Execute your `App`'s sql commands:
 Your schema has been created! Now you can load data.
 
 ```python
-   # iterate through each table, download knack data, translate it, and load it
-   for table in app.tables:
+    # iterate through each table, download knack data, translate it, and load it
+    from knackpy import Knack
+
+    for table in app.tables:
 
         obj = table.key
         
@@ -126,7 +128,7 @@ Your schema has been created! Now you can load data.
         # generate sql UPDATE statements to populate connection fields
         loader.connections_sql += tr.connections_sql()
 
-    # UPDATE rows with connection record ID referenes
+    # UPDATE rows with connection record ID references
     loader.update_connections()
 ```
 
