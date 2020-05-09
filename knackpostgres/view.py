@@ -23,10 +23,21 @@ class View:
         
         self._set_dependencies()
 
+        self._gather_tables()
+
         self.sql = self._to_sql()
 
     def _set_dependencies(self):
         self.depends_on = [field.rel_table_name for field in self.formula_fields]
+
+    def _gather_tables(self):
+        tables = [self.table.name_postgres]
+        
+        for field in self.concat_fields:
+            tables += field.tables
+
+        self.tables = list(set(tables))
+
 
     def _to_sql(self):
         sql = [f"SELECT {self.table.name_postgres}.*"]
@@ -37,4 +48,4 @@ class View:
         
         sql = f",\n{TAB}".join(sql)
 
-        return f"""CREATE VIEW {self.name} AS\n{TAB}{sql}\n FROM {self.table.name_postgres};\n\n"""
+        return f"""CREATE VIEW {self.name} AS\n{TAB}{sql}\n FROM {", ".join(self.tables)};\n\n"""
