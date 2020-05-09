@@ -39,6 +39,7 @@ CONCATENATION = r"""
 
 GRAMMARS = {"concatenation": {"grammar": CONCATENATION, "entry_point": "_values"}}
 
+
 def get_parser(grammar_name):
     grammar = GRAMMARS[grammar_name]["grammar"]
     # # i find `start` to be confusing, hence renaming it to `entry_point` in config
