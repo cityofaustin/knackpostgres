@@ -5,9 +5,7 @@ from .parsers import get_parser
 from .method_handler import MethodHandler
 
 
-# todo: are you actually surfacing concatenated text in nested functions?
-# i think not
-
+# todo: handle many-to-many connections :/
 
 # Regex search expressions
 # match: field_xx or field_xx.field_xx (if it's enclosed in braces)
@@ -226,7 +224,7 @@ class ConcatenationField(FieldDef):
 
     def _add_select_where_statements(self):
 
-        views = [f"{table_name}_view" for table_name in self.tables]
+        views = [f"{table_name}" for table_name in self.tables]
 
         where_clauses = []
 
@@ -239,7 +237,7 @@ class ConcatenationField(FieldDef):
             else:
                 rel_table_name = conn_field.table.name_postgres
         
-            rel_table_name = f"{rel_table_name}_view"
+            rel_table_name = f"{rel_table_name}"
 
             where_clause = f"""WHERE {rel_table_name}.{dest_join_field} = {self.table.name}.id"""
             where_clauses.append(where_clause)
