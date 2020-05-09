@@ -108,22 +108,6 @@ class ConcatenationField(FieldDef):
         method.sql = handler.handle_method()
         return None
 
-    def _gather_all_sql(self):
-        """
-        At this point, all of the method nodes in our tree have a `sql` attribute, and
-        all that's left to do is to create the sql syntax for the top-level elements
-        (which can be comprised of aribitrary strings or Knack field names, e.g. {field_101})
-        """
-        self.tree.sql = []
-
-        for elem in self.tree.children:
-            if elem.data == "text_content":
-                text_content = elem.children[0].value
-                substrings = self._parse_fieldnames(text_content)
-                self.tree.sql += substrings
-            elif elem.data == "method":
-                self.tree.sql.append(elem.sql)
-
     def _get_fieldmap(self):
         """
         Generate an index of knack fieldames and their postgres fieldnames.
@@ -180,50 +164,54 @@ class ConcatenationField(FieldDef):
         we include braces in our field search, because we must know which substrings are syntactical {field_xx}
         calls, or if for some reason your text formula has a non-field value like `field_99` :|        
         """
-
-        #         try:
-        #     fieldnames = [f"{{fieldname}}" for fieldname in self.fieldmap.keys()]
-
-        # except TypeError:
-        #     # this content is a non-string value, presuming integer
-        #     return [text_content]
-
         field_search = re.compile(FIELD_SEARCH_INCLUDE_BRACES)
 
         # fetch the known fieldnames in this formula from the fieldmap, adding braces as mentioned above
         try:
             fieldnames = [f"{{{fieldname}}}" for fieldname in self.fieldmap.keys()]
         except AttributeError:
-            print("no fieldnames")
-            print(self.equation)
             pass
 
         # split the string into it's components of fieldnames and non-fieldnames
         substrings = field_search.split(text_content)
-
-        bob = field_search.findall(text_content)
         
         # remove None values and empty strings, an artecfact of regex.findall
         substrings = [sub for sub in substrings if sub != "" and sub != None]
 
         # replace the fieldname elements with their postgres fieldname
-        # wrap non-fieldnames in single quotes, for sql
         for i, sub in enumerate(substrings):
-
             if sub in fieldnames:
                 substrings[i] = self.fieldmap[sub.replace("{", "").replace("}", "")]
             else:
-                # don't forget to escape single quotes!
+                # escape any single quotes in the substring, for sql
                 sub = sub.replace("'", "\\'")
+                # wrap non-fieldnames in single quotes, for sql
                 substrings[i] = f"'{sub}'"
 
-        # remove empty strings, which are an artefact of regex splitting
-        return [sub for sub in substrings if sub != "''"]
+        return substrings
+    
+    def _gather_all_sql(self):
+        """
+        At this point, all of the method nodes and their children have a `sql` attribute,
+        and all that's left to do is to create the sql syntax for the top-level elements
+        (which can be comprised of aribitrary strings or Knack field names, e.g. {field_101})
+
+        Assigns a list of the sql statements in each top-level node in the tree to `self.tree.sql`
+        """
+        self.tree.sql = []
+
+        for elem in self.tree.children:
+            if elem.data == "text_content":
+                text_content = elem.children[0].value
+                substrings = self._parse_fieldnames(text_content)
+                self.tree.sql += substrings
+            elif elem.data == "method":
+                self.tree.sql.append(elem.sql)
 
     def _to_sql(self):
         """ 
-        At this point, every node in our tree has a `sql` attribute, they merely need
-        to be concatenated.
+        At this point, every top-level node in our tree has a `sql` attribute, they merely
+        need to be concatenated.
         """
         self.sql = f"""CONCAT({', '.join(self.tree.sql)}) AS {self.name_postgres}"""
 
