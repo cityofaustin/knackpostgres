@@ -86,7 +86,11 @@ class ConcatenationField(FieldDef):
             elif arg_type == "method":
                 arg_substrings.append(elem.sql)
 
-        return f"CONCAT({', '.join(arg_substrings)})" if len(arg_substrings) > 1 else arg_substrings[0]
+        return (
+            f"CONCAT({', '.join(arg_substrings)})"
+            if len(arg_substrings) > 1
+            else arg_substrings[0]
+        )
 
     def _handle_method(self, method):
         """
@@ -122,7 +126,7 @@ class ConcatenationField(FieldDef):
         self.connection_fields = []
 
         fieldname_matches = re.findall(FIELD_SEARCH_EXCLUDE_BRACES, self.equation)
-        
+
         # and we need to unpack the results, which are touples of capturing groups. a tubple will
         # either have a value in first position (for normal field) or second position (connection field)
         fieldnames = [field[0] for field in fieldname_matches if field[0]]
@@ -136,7 +140,7 @@ class ConcatenationField(FieldDef):
                 # attempt to handle connected field
                 conn_fieldname = fieldname.split(".")[0]
                 target_fieldname = fieldname.split(".")[1]
-                
+
             except IndexError:
                 target_fieldname = fieldname
                 conn_fieldname = None
@@ -148,11 +152,13 @@ class ConcatenationField(FieldDef):
                 conn_field = self.app.find_field_from_field_key(conn_fieldname)
 
                 self.connection_fields.append(conn_field)
-                
+
             if target_field.table.name not in self.tables:
                 self.tables.append(target_field.table.name)
 
-            self.fieldmap[fieldname] = f"{target_field.table.name}.{target_field.name_postgres}"
+            self.fieldmap[
+                fieldname
+            ] = f"{target_field.table.name}.{target_field.name_postgres}"
 
         return self
 
@@ -174,7 +180,7 @@ class ConcatenationField(FieldDef):
 
         # split the string into it's components of fieldnames and non-fieldnames
         substrings = field_search.split(text_content)
-        
+
         # remove None values and empty strings, an artecfact of regex.findall
         substrings = [sub for sub in substrings if sub != "" and sub != None]
 
@@ -189,7 +195,7 @@ class ConcatenationField(FieldDef):
                 substrings[i] = f"'{sub}'"
 
         return substrings
-    
+
     def _gather_all_sql(self):
         """
         At this point, all of the method nodes and their children have a `sql` attribute,
@@ -216,6 +222,3 @@ class ConcatenationField(FieldDef):
         self.sql = f"""CONCAT({', '.join(self.tree.sql)}) AS {self.name_postgres}"""
 
         return self.sql
-
-
-        
