@@ -222,44 +222,12 @@ class ConcatenationField(FieldDef):
         # remove empty strings, which are an artefact of regex splitting
         return [sub for sub in substrings if sub != "''"]
 
-
-    def _add_select_where_statements(self):
-
-        views = [f"{table_name}" for table_name in self.tables]
-
-        where_clauses = []
-
-        for conn_field in self.connection_fields:
-            
-            dest_join_field = conn_field.name_postgres
-
-            if self.table.name_postgres == conn_field.name_postgres:
-                rel_table_name = conn_field.rel_table_name
-            else:
-                rel_table_name = conn_field.table.name_postgres
-        
-            rel_table_name = f"{rel_table_name}"
-
-            where_clause = f"""WHERE {rel_table_name}.{dest_join_field} = {self.table.name}.id"""
-            where_clauses.append(where_clause)
-
-        all_where_clauses = " AND ".join(where_clauses)
-        view_names = ", ".join(views)
-
-        return f"""(SELECT {self.sql} FROM {view_names} {all_where_clauses}) AS {self.name_postgres}"""
-
     def _to_sql(self):
         """ 
         At this point, every node in our tree has a `sql` attribute, they merely need
         to be concatenated.
         """
-        
-        self.sql = f"""CONCAT({', '.join(self.tree.sql)})"""
-
-        if (self.uses_connection):
-            self.sql = self._add_select_where_statements()
-        else:
-            self.sql = f"""{self.sql} AS {self.name_postgres}"""
+        self.sql = f"""CONCAT({', '.join(self.tree.sql)}) AS {self.name_postgres}"""
 
         return self.sql
 
