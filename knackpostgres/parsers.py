@@ -1,10 +1,8 @@
 """
 Lark parser definitions for handling knack foruma fields.
 """
-
 from lark import Lark
 
-# define grammars here, with the top level always named `values`
 CONCATENATION = r"""
     _values: (method | (text_before_method|text_without_method) )+
 
@@ -39,8 +37,10 @@ CONCATENATION = r"""
     _COMMA: /,/
 """
 
-GRAMMAR = {"concatenation": CONCATENATION}
+GRAMMARS = {"concatenation": {"grammar": CONCATENATION, "entry_point": "_values"}}
 
-
-def get_parser(grammar):
-    return Lark(GRAMMAR[grammar], start="_values", debug=False, propagate_positions=True)
+def get_parser(grammar_name):
+    grammar = GRAMMARS[grammar_name]["grammar"]
+    # # i find `start` to be confusing, hence renaming it to `entry_point` in config
+    entry_point = GRAMMARS[grammar_name]["entry_point"]
+    return Lark(grammar, start=entry_point, debug=False, propagate_positions=True)
