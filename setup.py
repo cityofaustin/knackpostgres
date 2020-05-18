@@ -16,6 +16,6 @@ setup(
     license="Public Domain",
     name="knackpostgres",
     packages=["knackpostgres"],
-    url="http://github.com/cityofaustin/knack-postgres",
+    url="http://github.com/cityofaustin/knackpostgres",
     version="0.0.1",
 )
