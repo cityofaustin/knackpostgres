@@ -87,6 +87,7 @@ class FieldDef:
         else:
             return self.default_knack
 
+
     def _handle_rules(self):
         # SOMEDAY!
         # if hasattr(self, "rules"):
@@ -126,3 +127,14 @@ class FieldDef:
             default = f"'{default}'"
 
         return f"DEFAULT {default} "
+
+    def to_sql(self):
+
+        pk = "PRIMARY KEY" if self.primary_key else ""
+
+        default = self._format_default()
+
+        constraints = " ".join(self.constraints) if self.constraints else ""
+
+        self.sql = f"{self.name_postgres} {self.data_type} {pk} {default}{constraints}".strip()
+        return self.sql
