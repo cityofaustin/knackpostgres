@@ -143,7 +143,7 @@ class Table:
 
     def _knack_id_field(self):
         return {
-            "required": True,
+            "required": False,
             "unique": True,
             "name": "knack_id",
             "key": "knack_id",
