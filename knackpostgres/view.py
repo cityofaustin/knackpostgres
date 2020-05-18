@@ -1,4 +1,4 @@
-import pdb
+from pprint import pprint as print
 
 from .constants import TAB
 from .concatenation_field import ConcatenationField
@@ -23,22 +23,31 @@ class View:
         
         self._set_dependencies()
 
-        self._gather_tables()
+        self._create_join_clauses()
 
         self.sql = self._to_sql()
 
     def _set_dependencies(self):
         self.depends_on = [field.rel_table_name for field in self.formula_fields]
 
-    def _gather_tables(self):
-        tables = [self.table.name_postgres]
+    def _create_join_clauses(self):
+        """
+        Create join statements for any concat field that uses a connection field
+
+        # todo: handle many-to-many concats
+        # todo: currently assuming that concat's table is the connection host :/
+        """
         
+        joins = []
+
         for field in self.concat_fields:
-            tables += field.tables
+            for conn_field in field.connection_fields:
+                rel_table_name = conn_field.rel_table_name
+                host_field_name = conn_field.name_postgres
+                joins.append(f"""LEFT OUTER JOIN {rel_table_name} ON ({self.table.name_postgres}.{host_field_name} = {rel_table_name}.id)""")
 
-        self.tables = list(set(tables))
-
-
+        self.joins = "\n ".join(joins)
+    
     def _to_sql(self):
         sql = [f"SELECT {self.table.name_postgres}.*"]
         
@@ -48,4 +57,4 @@ class View:
         
         sql = f",\n{TAB}".join(sql)
 
-        return f"""CREATE VIEW {self.name} AS\n{TAB}{sql}\n FROM {", ".join(self.tables)};\n\n"""
+        return f"""CREATE VIEW {self.name} AS\n{TAB}{sql}\n FROM {self.table.name_postgres} {self.joins};\n\n"""
