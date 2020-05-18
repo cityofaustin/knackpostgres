@@ -80,6 +80,9 @@ class Translator:
             for field in record.keys():
                 if field in conn_fields:
                     vals = record[field]
+                    if not vals:
+                        continue
+
                     rel_table_name = conn_fields[field].rel_table_name
 
                     if isinstance(vals, list):
@@ -90,12 +93,12 @@ class Translator:
                                 )
                             )
                     else:
-                        print("single one!!!!!")
                         conn_data.append(
                             self._connection_record(
                                 field, record["knack_id"], vals["id"], rel_table_name
                             )
                         )
+
 
         return conn_data
 
@@ -150,6 +153,10 @@ class Translator:
             for field in record.keys():
                 if field in conn_fields:
                     vals = record[field]
+                    
+                    if not vals:
+                        continue
+
                     rel_table_name = conn_fields[field].rel_table_name
                     reference_table_name = conn_fields[field].reference_table_name
                     if isinstance(vals, list):
@@ -164,7 +171,6 @@ class Translator:
                                 )
                             )
                     else:
-                        print("single one!!!!!")
                         conn_data.append(
                             self._connection_record(
                                 field,
