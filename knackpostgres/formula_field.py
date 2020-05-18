@@ -47,7 +47,7 @@ class FormulaField(FieldDef):
 
         self.method = "AVG" if pg_method == "AVERAGE" else pg_method
 
-        self.host_table_name = self.table.name
+        self.host_table_name = self.table.name_postgres
 
         self.name = self.name_postgres
         
@@ -105,30 +105,3 @@ class FormulaField(FieldDef):
 
     def to_sql(self):
         return self.sql
-        
-# name: count_of_orders
-# host: customers
-# 'connection': 'field_43',
-# self.connection_field.relationship_type = one to many
-# self.connection_field.rel_table_name = customers << prbolem. use table name
-
-# on toppings count pizzas.id over pizza connection
-
-# bob = """
-# SELECT count(pizzas.{def field} (id) })
-#   FROM orders
-#   JOIN many_pizzas_to_many_orders 
-#     ON many_pizzas_to_many_orders.orders_id = orders.id
-#   JOIN pizzas
-#     ON many_pizzas_to_many_orders.pizzas_id = pizzas.id
-#     WHERE pizzas.pizza_name = 'sausage';
-# """
-
-# bob = """
-# SELECT COUNT(pizzas.id) as count_of_pizzas
-#             FROM pizzas
-#             JOIN many_toppings_to_many_pizzas 
-#             ON many_toppings_to_many_pizzas.pizzas_id' = pizzas.id
-#             JOIN toppings
-#             ON many_toppings_to_many_pizzas.toppings_id' = toppings.id
-# """

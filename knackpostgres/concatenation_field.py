@@ -153,12 +153,12 @@ class ConcatenationField(FieldDef):
 
                 self.connection_fields.append(conn_field)
 
-            if target_field.table.name not in self.tables:
-                self.tables.append(target_field.table.name)
+            if target_field.table.name_postgres not in self.tables:
+                self.tables.append(target_field.table.name_postgres)
 
             self.fieldmap[
                 fieldname
-            ] = f"{target_field.table.name}.{target_field.name_postgres}"
+            ] = f"{target_field.table.name_postgres}.{target_field.name_postgres}"
 
         return self
 
