@@ -11,7 +11,7 @@ Convert Knack applications to a PostgreSQL database.
 1. Clone this repo
 
 ```bash
-$ git clone http://github.com/cityofaustin/knack-to-postgres
+$ git clone http://github.com/cityofaustin/knackpostgres
 ```
 
 2. Install the library
@@ -34,7 +34,7 @@ $ pip install knackpostgres
 # find your app id: https://www.knack.com/developer-documentation/#find-your-api-key-amp-application-id
 
 # optionally include a list of object keys defining which objects to include
->>> app = App("myappidstring", obj_filter=["obj_12", "obj_13"])
+>>> app = App("myappidstring", obj_filter=["object_12", "object_13"])
 ```
 
 If you want to execute the SQL commandsd manually, you can write the App's SQL commands to files:
@@ -72,7 +72,7 @@ Pass your `App` to a new `Loader` instance.
 
 >>> app = App("myappidstring")
 
-# ! This will overwrite the destination DB schema !
+# This will overwrite the public schema in the destination DB!
 >>> loader = Loader(app, overwrite=True)
 ```
 
@@ -100,6 +100,7 @@ Your schema has been created! Now you can load data.
 
 ```python
     # iterate through each table, download knack data, translate it, and load it
+    import Translator
     from knackpy import Knack
 
     for table in app.tables:
@@ -137,6 +138,8 @@ Your schema has been created! Now you can load data.
 ### Knack Feature Coverage
 
 This is a work in progress. Currently supported Knack features include:
+
+Validation and conditional rules are not supported. These should be implemented outside of the database. See [React](#react) notes.
 
 All **connection field** types are supported, although self-connections are not well tested.
 
