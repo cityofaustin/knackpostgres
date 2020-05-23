@@ -15,9 +15,9 @@ from .table import Table
 from .reference_table import ReferenceTable
 from .view import View
 from .relationship import Relationship
+from .meta_table import MetaTable
 from .utils import valid_pg_name
 from .scene import Scene
-
 
 class App:
     """
@@ -45,14 +45,14 @@ class App:
         self.obj_filter = obj_filter
 
         # fetch knack metadata
-        self.metadata = self._get_app_data()
+        self.metadata_knack = self._get_app_data()
 
         # assign knack metadata to class attributes
-        for key in self.metadata:
-            setattr(self, key, self.metadata[key])
+        for key in self.metadata_knack:
+            setattr(self, key, self.metadata_knack[key])
 
-        self.tables = self._handle_tables()
-
+        self.tables = self._generate_tables()
+        
         self.obj_lookup = self._generate_obj_lookup()
 
         self._update_one_to_many_relationships()
@@ -63,21 +63,12 @@ class App:
 
         self.views = self._handle_views() # these are database views, not Knack "views" ;)
 
+        self.tables.append(MetaTable(self))
+
         self.scenes = self._handle_scenes()
 
         logging.info(self)
 
-    # def print_stuff(self):
-    #     for obj in self.objects:
-    #         for field in obj["fields"]:
-    #             if field.get("rules"):
-    #                 for rule in field["rules"]:
-    #                     print(f"criteria: {rule['criteria']}")
-    #                     print(f"values: {rule['values']}")
-
-    #             # if field["type"] == "concatenation":
-    #             #     print(field["format"]["equation"])
-    #     import pdb; pdb.set_trace()
 
     def to_sql(self, path="sql"):
         """
@@ -106,7 +97,7 @@ class App:
     def _get_app_data(self):
         return get_app_data(self.app_id)
 
-    def _handle_tables(self):
+    def _generate_tables(self):
         if self.obj_filter:
             return [Table(obj) for obj in self.objects if obj["key"] in self.obj_filter]
         else:
