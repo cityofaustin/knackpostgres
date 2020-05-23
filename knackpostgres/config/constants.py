@@ -2,8 +2,6 @@ PG_NULL = "$$NULL$$"
 
 TAB = "    "
 
-FORBIDDEN_NAMES = ["user", "default", "unique", "number", "limit"]
-
 FIELD_DEFINITIONS = {
     "short_text": {
         "type_postgres": "TEXT",

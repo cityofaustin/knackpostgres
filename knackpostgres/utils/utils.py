@@ -1,5 +1,3 @@
-from knackpostgres.config.constants import FORBIDDEN_NAMES
-
 def valid_pg_name(original_name):
     """
     Convert an arbitrary string into a postgres-compliant name.
@@ -14,7 +12,8 @@ def valid_pg_name(original_name):
 
     Docs: https://www.postgresql.org/docs/9.1/sql-syntax-lexical.html
     """
-
+    FORBIDDEN_NAMES = ["user", "default", "unique", "number", "limit", "table", "column", "view"]
+    
     # first, make lowercase and replace spaces with underscores
     new_name = original_name.lower().replace(" ", "_")
 
