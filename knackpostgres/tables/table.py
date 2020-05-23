@@ -1,11 +1,11 @@
-from .field_def import FieldDef
-from .concatenation_field import ConcatenationField
-from .formula_field import FormulaField
-from .many_to_one_field import ManyToOneField
-from .many_to_many_field import ManyToManyField
-from .standard_field import StandardField
-from .utils import valid_pg_name
-from .constants import FIELD_DEFINITIONS, TAB
+from knackpostgres.fields.field_def import FieldDef
+from knackpostgres.fields.concatenation_field import ConcatenationField
+from knackpostgres.fields.formula_field import FormulaField
+from knackpostgres.fields.many_to_one_field import ManyToOneField
+from knackpostgres.fields.many_to_many_field import ManyToManyField
+from knackpostgres.fields.standard_field import StandardField
+from knackpostgres.utils.utils import valid_pg_name
+from knackpostgres.config.constants import FIELD_DEFINITIONS, TAB
 
 
 class Table:

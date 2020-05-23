@@ -1,5 +1,5 @@
 from .connection_field import ConnField
-from .constants import FIELD_DEFINITIONS
+from knackpostgres.config.constants import FIELD_DEFINITIONS
 
 
 class ManyToOneField(ConnField):

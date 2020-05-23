@@ -1,8 +1,8 @@
 import re
 
 from .field_def import FieldDef
-from .parsers import get_parser
-from .method_handler import MethodHandler
+from knackpostgres.utils.parsers import get_parser
+from knackpostgres.utils.method_handler import MethodHandler
 
 
 # todo: handle many-to-many connections :/

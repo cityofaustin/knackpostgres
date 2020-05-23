@@ -1,6 +1,6 @@
 from .field_def import FieldDef
 from .equation import Equation
-from .constants import FIELD_DEFINITIONS
+from knackpostgres.config.constants import FIELD_DEFINITIONS
 
 
 class FormulaField(FieldDef):

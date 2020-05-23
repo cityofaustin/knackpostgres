@@ -1,5 +1,5 @@
-from .constants import PG_NULL
 import json
+from knackpostgres.config.constants import PG_NULL
 
 class DataHandlers:
     """ Handlers for translating Knack record values to destination DB values """

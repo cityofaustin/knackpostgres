@@ -1,4 +1,4 @@
-from .concatenation_methods import METHOD_DEFINITIONS
+from knackpostgres.config.concatenation_methods import METHOD_DEFINITIONS
 
 
 class MethodHandler:

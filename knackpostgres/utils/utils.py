@@ -1,5 +1,4 @@
-from .constants import FORBIDDEN_NAMES
-
+from knackpostgres.config.constants import FORBIDDEN_NAMES
 
 def valid_pg_name(original_name):
     """

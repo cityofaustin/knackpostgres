@@ -1,7 +1,7 @@
 from pprint import pprint as print
 
 from .view_knack import ViewKnack
-from .utils import valid_pg_name
+from knackpostgres.utils.utils import valid_pg_name
 
 class Scene:
     """ Base class for Knack `scene` definition wrappers """

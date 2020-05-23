@@ -1,8 +1,8 @@
 from pprint import pprint as print
 
-from .constants import TAB
-from .concatenation_field import ConcatenationField
-from .formula_field import FormulaField
+from knackpostgres.config.constants import TAB
+from knackpostgres.fields.concatenation_field import ConcatenationField
+from knackpostgres.fields.formula_field import FormulaField
 
 class View:
     """ Generate Postgres table view sql of all table columns plus formula fields """

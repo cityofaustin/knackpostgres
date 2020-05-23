@@ -2,10 +2,10 @@ import csv
 import logging
 from pathlib import Path
 
-from .many_to_one_field import ManyToOneField
-from .many_to_many_field import ManyToManyField
-from .data_handlers import DataHandlers
-from .constants import PG_NULL
+from knackpostgres.fields.many_to_one_field import ManyToOneField
+from knackpostgres.fields.many_to_many_field import ManyToManyField
+from knackpostgres.data_handlers import DataHandlers
+from knackpostgres.config.constants import PG_NULL
 
 
 IGNORE_FIELD_TYPES = [

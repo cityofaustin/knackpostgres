@@ -1,5 +1,5 @@
-from .constants import FIELD_DEFINITIONS, TAB
-from .utils import valid_pg_name
+from knackpostgres.config.constants import FIELD_DEFINITIONS, TAB
+from knackpostgres.utils.utils import valid_pg_name
 
 
 class FieldDef:

@@ -8,18 +8,16 @@ import pdb
 
 from knackpy import get_app_data
 
-from .formula_field import FormulaField
-from .concatenation_field import ConcatenationField
-from .constants import TAB
-from .table import Table
-from .reference_table import ReferenceTable
-from .view import View
-from .relationship import Relationship
-from .meta_table import MetaTable
-from .utils import valid_pg_name
+from knackpostgres.fields.formula_field import FormulaField
+from knackpostgres.fields.concatenation_field import ConcatenationField
+from knackpostgres.config.constants import TAB
+from knackpostgres.tables.table import Table
+from knackpostgres.tables.reference_table import ReferenceTable
+from knackpostgres.tables.view import View
+from knackpostgres.tables.meta_table import MetaTable
 from .scene import Scene
 
-
+pdb.set_trace()
 class App:
     """
     Knack application wrapper. Stores app meta data, tables, fields, etc.
