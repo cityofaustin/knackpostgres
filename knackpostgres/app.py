@@ -19,6 +19,7 @@ from .meta_table import MetaTable
 from .utils import valid_pg_name
 from .scene import Scene
 
+
 class App:
     """
     Knack application wrapper. Stores app meta data, tables, fields, etc.
@@ -52,7 +53,7 @@ class App:
             setattr(self, key, self.metadata_knack[key])
 
         self.tables = self._generate_tables()
-        
+
         self.obj_lookup = self._generate_obj_lookup()
 
         self._update_one_to_many_relationships()
@@ -61,14 +62,15 @@ class App:
 
         self._handle_formulae()
 
-        self.views = self._handle_views() # these are database views, not Knack "views" ;)
+        self.views = (
+            self._handle_views()
+        )  # these are database views, not Knack "views" ;)
 
         self.tables.append(MetaTable(self))
 
         self.scenes = self._handle_scenes()
 
         logging.info(self)
-
 
     def to_sql(self, path="sql"):
         """
@@ -135,9 +137,9 @@ class App:
 
         for field in fields:
             field.set_relationship_references(self)
-            
+
             tables.append(ReferenceTable(field.reference_table_data))
-            
+
         return tables
 
     def _gather_many_to_many_relationships(self):
@@ -157,9 +159,11 @@ class App:
     def _handle_formulae(self):
         for table in self.tables:
             for field in table.fields:
-                if isinstance(field, FormulaField) or isinstance(field, ConcatenationField):
+                if isinstance(field, FormulaField) or isinstance(
+                    field, ConcatenationField
+                ):
                     field.handle_formula(self)
-                    
+
         return self.tables
 
     def find_table_from_object_key(self, key, return_attr=None):
@@ -204,6 +208,6 @@ class App:
 
     def _handle_scenes(self):
         scenes = []
-        
+
         for scene in self.scenes:
             scenes.append(Scene(scene))
