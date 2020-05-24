@@ -3,6 +3,7 @@ from pprint import pprint as print
 from .view_knack import ViewKnack
 from knackpostgres.utils.utils import valid_pg_name
 
+
 class Scene:
     """ Base class for Knack `scene` definition wrappers """
 
@@ -19,7 +20,6 @@ class Scene:
             setattr(self, key + "_knack", data[key])
 
         self._handle_views()
-        
 
     def _handle_views(self):
         self.views = []

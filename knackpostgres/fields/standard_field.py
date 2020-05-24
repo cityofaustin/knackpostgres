@@ -1,10 +1,10 @@
-from .field_def import FieldDef
+from ._knack_field import KnackField
 from knackpostgres.config.constants import FIELD_DEFINITIONS
 
 
-class StandardField(FieldDef):
+class StandardField(KnackField):
     """ Knack foruma field definition wrapper """
-    
-    def __init__(self, data, table):
-        super().__init__(data, table)
+
+    def __init__(self, data, name, table):
+        super().__init__(data, name, table)
         pass

@@ -63,10 +63,26 @@ FIELD_DEFINITIONS = {
         "is_formula": True,
         "is_standard_equation": False,
     },
-    "count": {"type_postgres": "NUMERIC", "is_formula": True, "is_standard_equation": True},
-    "max": {"type_postgres": "NUMERIC", "is_formula": True, "is_standard_equation": True},
-    "min": {"type_postgres": "NUMERIC", "is_formula": True, "is_standard_equation": True},
-    "sum": {"type_postgres": "NUMERIC", "is_formula": True, "is_standard_equation": True},
+    "count": {
+        "type_postgres": "NUMERIC",
+        "is_formula": True,
+        "is_standard_equation": True,
+    },
+    "max": {
+        "type_postgres": "NUMERIC",
+        "is_formula": True,
+        "is_standard_equation": True,
+    },
+    "min": {
+        "type_postgres": "NUMERIC",
+        "is_formula": True,
+        "is_standard_equation": True,
+    },
+    "sum": {
+        "type_postgres": "NUMERIC",
+        "is_formula": True,
+        "is_standard_equation": True,
+    },
     "equation": {
         "type_postgres": None,
         "is_formula": True,

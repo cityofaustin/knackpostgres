@@ -1,14 +1,14 @@
-from .field_def import FieldDef
+from ._knack_field import KnackField
 from .equation import Equation
 from knackpostgres.config.constants import FIELD_DEFINITIONS
 
 
-class FormulaField(FieldDef):
+class FormulaField(KnackField):
     """ A Knack foruma field definition wrapper """
-    
-    def __init__(self, data, table):
-        super().__init__(data, table)
-    
+
+    def __init__(self, data, name, table):
+        super().__init__(data, name, table)
+
     def handle_formula(self, app):
 
         if FIELD_DEFINITIONS[self.type_knack].get("is_standard_equation"):
@@ -50,7 +50,7 @@ class FormulaField(FieldDef):
         self.host_table_name = self.table.name_postgres
 
         self.name = self.name_postgres
-        
+
         if self.method == "COUNT":
             # for counts, always just count the primary key
             self.dest_field_name = "id"
@@ -65,7 +65,7 @@ class FormulaField(FieldDef):
         try:
             # count connections key is a string
             self.connection_field_key = self.format_knack["connection"].get("key")
-        
+
         except AttributeError:
             # other connections are a dict with "key"
             self.connection_field_key = self.format_knack["connection"]
@@ -79,7 +79,7 @@ class FormulaField(FieldDef):
             return self._many_to_many_formula(app)
         else:
             return self._one_to_many_formula(app)
-        
+
     def _many_to_many_formula(self, app):
         self.rel_table_name = self.connection_field.rel_table_name
         self.rel_table_view_name = f"{self.rel_table_name}_view"
@@ -98,7 +98,7 @@ class FormulaField(FieldDef):
             self.rel_table_name = self.connection_field.rel_table_name
         else:
             self.rel_table_name = self.connection_field.table.name_postgres
-        
+
         self.rel_table_name = f"{self.rel_table_name}_view"
 
         return f"""(SELECT {self.method}({self.rel_table_name}.{self.dest_field_name}) FROM {self.rel_table_name} WHERE {self.rel_table_name}.{self.dest_join_field} = {self.host_table_name}.id) AS {self.name_postgres}"""

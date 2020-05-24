@@ -4,19 +4,20 @@ Convert a Knack application to a PostgreSQL Database.
 import logging
 from pathlib import Path
 from pprint import pprint as print
-import pdb
 
 from knackpy import get_app_data
 
 from knackpostgres.fields.formula_field import FormulaField
 from knackpostgres.fields.concatenation_field import ConcatenationField
 from knackpostgres.config.constants import TAB
-from knackpostgres.tables.table import Table
+from knackpostgres.tables.knack_table import KnackTable
+from knackpostgres.tables.metadata_table import MetaTable
 from knackpostgres.tables.reference_table import ReferenceTable
 from knackpostgres.tables.view import View
-from knackpostgres.tables.meta_table import MetaTable
+from knackpostgres.tables.metadata_table import MetaTable
 from knackpostgres.scene import Scene
 from knackpostgres.utils.utils import valid_pg_name
+
 
 class App:
     """
@@ -36,7 +37,9 @@ class App:
     def __repr__(self):
         return f"<App {self.name}> ({len(self.objects)} objects)"
 
-    def __init__(self, app_id, obj_filter=None, schema="public", metadata_schema="__meta__"):
+    def __init__(
+        self, app_id, obj_filter=None, schema="public", metadata_schema="_meta"
+    ):
 
         self.app_id = app_id
 
@@ -44,8 +47,8 @@ class App:
         self.obj_filter = obj_filter
 
         # all tables will be written here, except for meta tables, which go to schema __meta__
-        self.schema = valid_pg_name(schema)[0]
-        self.metadata_schema = valid_pg_name(metadata_schema)[0]
+        self.schema = valid_pg_name(schema)
+        self.metadata_schema = valid_pg_name(metadata_schema)
 
         # fetch knack metadata
         self.metadata_knack = self._get_app_data()
@@ -68,7 +71,7 @@ class App:
             self._handle_views()
         )  # these are database views, not Knack "views" ;)
 
-        self.tables.append(MetaTable(self, self.metadata_schema))
+        self.metadata = self._set_metadata()
 
         self.scenes = self._handle_scenes()
 
@@ -83,12 +86,7 @@ class App:
         Alternatively, use the `Loader` class to connect/write directly
         from the `App` class.
         """
-        self._write_sql(
-            self.schema_sql,
-            path,
-            "schema",
-            self.schema
-        )
+        self._write_sql(self.schema_sql, path, "schema", self.schema)
 
         for table in self.tables:
             self._write_sql(table.to_sql(), path, "tables", table.name_postgres)
@@ -99,7 +97,9 @@ class App:
     def _generate_schema_sql(self):
         schema = [self.schema, self.metadata_schema]
 
-        schema_sql = [f"CREATE SCHEMA IF NOT EXISTS {schema_name};" for schema_name in schema]
+        schema_sql = [
+            f"CREATE SCHEMA IF NOT EXISTS {schema_name};" for schema_name in schema
+        ]
         return "\n".join(schema_sql)
 
     def _write_sql(self, sql, path, subdir, name_attr, method="w"):
@@ -118,16 +118,20 @@ class App:
 
     def _generate_tables(self):
         if self.obj_filter:
-            return [Table(obj, self.schema) for obj in self.objects if obj["key"] in self.obj_filter]
+            return [
+                KnackTable(obj, obj["name"], self.schema)
+                for obj in self.objects
+                if obj["key"] in self.obj_filter
+            ]
         else:
-            return [Table(obj, self.schema) for obj in self.objects]
+            return [KnackTable(obj, obj["name"], self.schema) for obj in self.objects]
 
     def _handle_views(self):
         return [View(table) for table in self.tables]
 
     def _generate_obj_lookup(self):
         """ The obj_lookup allows us to find connected object keys across the entire app """
-        return {table.key: table.name_postgres for table in self.tables}
+        return {table.key_knack: table.name_postgres for table in self.tables}
 
     def _update_one_to_many_relationships(self):
         # sets field definitions for relationship fields,
@@ -154,8 +158,15 @@ class App:
 
         for field in fields:
             field.set_relationship_references(self)
-
-            tables.append(ReferenceTable(field.reference_table_data, schema=self.schema))
+            reference_table_name = field.reference_table_name
+            tables.append(
+                KnackTable(
+                    field.reference_table_data,
+                    reference_table_name,
+                    self.schema,
+                    associative=True,
+                )
+            )
 
         return tables
 
@@ -185,7 +196,7 @@ class App:
 
     def find_table_from_object_key(self, key, return_attr=None):
         for table in self.tables:
-            if table.key == key:
+            if table.key_knack == key:
                 return table if not return_attr else getattr(table, return_attr)
         return None
 
@@ -195,11 +206,21 @@ class App:
         """
         for table in self.tables:
             for field in table.fields:
-                if field.key_knack == key:
-                    try:
-                        return field if not return_attr else getattr(field, return_attr)
-                    except AttributeError:
-                        return None
+                try:
+                    if field.key_knack == key:
+                        try:
+                            return (
+                                field
+                                if not return_attr
+                                else getattr(field, return_attr)
+                            )
+                        except AttributeError:
+                            # we found the field, but it's missing the requested attribute
+                            return None
+                except AttributeError:
+                    # primary key fields do not have `knack` field propeties and are ignored
+                    continue
+
         else:
             return None
 
@@ -228,3 +249,11 @@ class App:
 
         for scene in self.scenes:
             scenes.append(Scene(scene))
+
+    def _set_metadata(self):
+        metadata = []
+        fields = [field for table in self.tables for field in table.fields]
+        metatable_fields = MetaTable(fields, "_fields", self.metadata_schema)
+        metatable_fields.to_sql()
+        metadata.append(metatable_fields)
+        return metadata

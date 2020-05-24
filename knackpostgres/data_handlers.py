@@ -1,6 +1,7 @@
 import json
 from knackpostgres.config.constants import PG_NULL
 
+
 class DataHandlers:
     """ Handlers for translating Knack record values to destination DB values """
 
@@ -37,9 +38,9 @@ class DataHandlers:
         """
         if val == "":
             return PG_NULL
-            
+
         return val
-    
+
     def _connection_handler(self, val):
         return val
 
@@ -69,18 +70,19 @@ class DataHandlers:
             return PG_NULL
 
         try:
-            return val.get("url").strip() # noticed some leading white space in data tracker
+            return val.get(
+                "url"
+            ).strip()  # noticed some leading white space in data tracker
 
         except AttributeError:
-            return val.strip()  
+            return val.strip()
 
     def _date_time_handler(self, val):
         if val == "":
             return PG_NULL
-        
+
         return val.get("iso_timestamp")
 
-    
     def _timer_handler(self, val):
         return val["times"][0]["from"]["iso_timestamp"]
 

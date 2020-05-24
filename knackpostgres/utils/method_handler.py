@@ -8,6 +8,7 @@ class MethodHandler:
     This pattern allows us to to map Knack functions to SQL functions, which often but not
     always have the same name/structure.
     """
+
     def __repr__(self):
         return f"<MethodHandler `{self.method.name}`>"
 

@@ -26,23 +26,22 @@ class Translator:
     """
 
     def __init__(self):
-        self.records = []
+        self.data = []
         self.table = None
         pass
 
     def _values_sql(self, values):
-        
+
         values_sql = []
-        
+
         for value in values:
             if type(value) == list:
-                value_str = ", ".join([f"\"{val}\"" for val in value])
-                values_sql.append(f"\'{{{value_str}}}\'")
+                value_str = ", ".join([f'"{val}"' for val in value])
+                values_sql.append(f"'{{{value_str}}}'")
             else:
-               values_sql.append(f"'{value}'")
-        
-        return ", ".join([sql for sql in values_sql])
+                values_sql.append(f"'{value}'")
 
+        return ", ".join([sql for sql in values_sql])
 
     def to_sql(self, path="data"):
         path = Path.cwd() / path
@@ -53,15 +52,15 @@ class Translator:
 
         with open(self.fname, "w") as fout:
 
-            for record in self.records:
-                columns = ", ".join(record.keys())
-                values = self._values_sql(record.values())
+            for row in self.data:
+                columns = ", ".join(row.keys())
+                values = self._values_sql(row.values())
                 sql = f"""INSERT INTO {self.table.schema}.{self.table.name_postgres} ({columns}) VALUES\n({values});\n\n"""
                 sql = sql.replace(f"'{PG_NULL}'", "NULL")
                 fout.write(sql)
                 statements.append(sql)
 
-        logging.info(f"{self.fname} - {len(self.records)} records")
+        logging.info(f"{self.fname} - {len(self.data)} rows")
         self.sql = statements
 
 
@@ -70,6 +69,7 @@ class KnackTranslator(Translator):
     Translate Knack records to destination postgresql schema. Generate insert and update
     statements data loading.
     """
+
     def __repr__(self):
         return f"<KnackTranslator {self.knack.obj} to {self.table.name_postgres}>"
 
@@ -84,8 +84,8 @@ class KnackTranslator(Translator):
             raise IndexError(f"No records found at {self.knack.obj}")
 
         self.knack.data_raw = self._replace_raw_fieldnames()
-        self.records = self._translate_records()
-        self.records = self._convert_fieldnames()
+        self.data = self._translate_records()
+        self.data = self._convert_fieldnames()
         self.connection_data = self._extract_one_to_many_connections()
         self.connection_data += self._extract_many_to_many_connections()
         self._drop_connection_fields()
@@ -121,7 +121,7 @@ class KnackTranslator(Translator):
 
         conn_data = []
 
-        for record in self.records:
+        for record in self.data:
             for field in record.keys():
                 if field in conn_fields:
                     vals = record[field]
@@ -172,7 +172,7 @@ class KnackTranslator(Translator):
             if isinstance(field, ManyToOneField) or isinstance(field, ManyToManyField)
         }
 
-        for record in self.records:
+        for record in self.data:
             for fname in conn_fieldnames:
                 try:
                     record.pop(fname)
@@ -193,7 +193,7 @@ class KnackTranslator(Translator):
 
         conn_data = []
 
-        for record in self.records:
+        for record in self.data:
             for field in record.keys():
                 if field in conn_fields:
                     vals = record[field]
@@ -323,7 +323,7 @@ class KnackTranslator(Translator):
         """
         new_records = []
 
-        for record in self.records:
+        for record in self.data:
             new_record = {}
 
             for field in record.keys():
@@ -366,11 +366,7 @@ class MetaTranslator(Translator):
     def __repr__(self):
         return f"<MetaTable {self.name_postgres}>"
 
-    def __init__(self, meta_table):
+    def __init__(self, metatable):
         super().__init__()
-
-        self.table = meta_table
-        self.records = self.table.records
-
-    def set_records(self, records):
-        self.records = records
+        self.table = metatable
+        self.data = self.table.rows

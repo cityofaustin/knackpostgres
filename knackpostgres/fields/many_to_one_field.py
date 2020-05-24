@@ -4,22 +4,24 @@ from knackpostgres.config.constants import FIELD_DEFINITIONS
 
 class ManyToOneField(ConnField):
     """ A Knack foruma field definition wrapper """
-    
-    def __init__(self, data, table):
-        super().__init__(data, table)
+
+    def __init__(self, data, name, table):
+        super().__init__(data, name, table)
 
     def to_sql(self):
 
-        pk = "PRIMARY KEY" if self.primary_key else ""
+        pk = "PRIMARY KEY" if self.is_primary_key else ""
 
         default = self._format_default()
 
         # todo enable these after data is loaded
         # constraints = " ".join(self.constraints) if self.constraints else ""
-        
+
         constraints = ""
 
-        self.sql = f"{self.name_postgres} {self.data_type} {pk} {default}{constraints}".strip()
+        self.sql = (
+            f"{self.name_postgres} {self.data_type} {pk} {default}{constraints}".strip()
+        )
         return self.sql
 
     def handle_relationship(self, host_table_name, rel_table_name):
@@ -44,7 +46,7 @@ class ManyToOneField(ConnField):
         defined in .constanstants.FIELD_DEFINITIONS
         """
         self.rel_table_name = rel_table_name
-        
+
         self.name_postgres = f"{self.name_postgres}_rel_{self.rel_table_name}_id"
 
         if self.relationship_type == "many_to_one":

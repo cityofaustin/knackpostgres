@@ -1,6 +1,6 @@
 import re
 
-from .field_def import FieldDef
+from ._knack_field import KnackField
 from knackpostgres.utils.parsers import get_parser
 from knackpostgres.utils.method_handler import MethodHandler
 
@@ -16,15 +16,15 @@ FIELD_SEARCH_EXCLUDE_BRACES = "(?:{)(field_\d+)(?:})|(?:{)(field_\d+.field_\d+)(
 FIELD_SEARCH_INCLUDE_BRACES = "({field_\d+})|({field_\d+.field_\d+})"
 
 
-class ConcatenationField(FieldDef):
+class ConcatenationField(KnackField):
     """
     Field wrapper/parser of Knack concatenation (aka `text formula`) fields.
 
     in the words of Gob Bluth, i didn't take `wasn't optimistic it could be done` for an answer
     """
 
-    def __init__(self, data, table):
-        super().__init__(data, table)
+    def __init__(self, data, name, table):
+        super().__init__(data, name, table)
 
         self.equation = self.format_knack.get("equation")
         """

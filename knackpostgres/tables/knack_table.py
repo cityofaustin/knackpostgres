@@ -1,4 +1,5 @@
-from knackpostgres.fields.field_def import FieldDef
+from knackpostgres.tables._table import Table
+from knackpostgres.fields._knack_field import KnackField
 from knackpostgres.fields.concatenation_field import ConcatenationField
 from knackpostgres.fields.formula_field import FormulaField
 from knackpostgres.fields.many_to_one_field import ManyToOneField
@@ -8,92 +9,100 @@ from knackpostgres.utils.utils import valid_pg_name
 from knackpostgres.config.constants import FIELD_DEFINITIONS, TAB
 
 
-class Table:
+class KnackTable(Table):
     """ A Knack table (`object`) wrapper """
 
-    def __repr__(self):
-        return f"<Table {self.name_postgres}> ({len(self.fields)} fields)"
-
-    def __init__(self, data, schema):
+    def __init__(self, data, name, schema, associative=False):
         # where data is knack "objects" list from app data
+        super().__init__(data, name, schema)
 
         for key in data:
-            setattr(self, key, data[key])
+            setattr(self, key + "_knack", data[key])
 
-        self.schema = schema
+        if not associative:
+            self.fields_knack.append(self._knack_id_field())
 
-        self.name_postgres, self.name_knack = valid_pg_name(self.name)
-
-        self.fields = self._handle_fields()
-
-        
+        self.fields += self._handle_knack_fields()
 
     def update_one_to_many_relationships(self, obj_lookup):
 
         for field in self.fields:
-            
+
             try:
                 if field.relationship_type == "many_to_many":
                     continue
-            
+
             except AttributeError:
                 continue
-            
+
             rel_obj = field.relationship_knack["object"]
             rel_table_name = obj_lookup[rel_obj]
-            
+
             field.handle_relationship(
                 host_table_name=self.name_postgres, rel_table_name=rel_table_name
             )
 
         return self
 
-    def _remove_dupes(self):
+    def _remove_dupes(self, fields):
         # sometimes the metadata has duplicate, identical entries for the same field.
         # they have different knack record IDs, so....?
         field_keys = []
         cleaned = []
 
-        for field in self.fields:
+        for field in fields:
             if field["key"] not in field_keys:
                 field_keys.append(field["key"])
                 cleaned.append(field)
 
         return cleaned
 
-    def _handle_fields(self):
-        self.fields = self._remove_dupes()
-        
-        self.fields.append(self._primary_key_field())
-        
-        self.fields.append(self._knack_id_field())
+    def _handle_knack_fields(self):
+        self.fields_knack = self._remove_dupes(self.fields_knack)
 
         classified = self._classify_fields()
 
-        concats = [ConcatenationField(field, self) for field in classified["concats"] ]
+        concats = [
+            ConcatenationField(field, field["name"], self)
+            for field in classified["concats"]
+        ]
 
-        formula_fields = [FormulaField(field, self) for field in classified["formulas"] ]
+        formula_fields = [
+            FormulaField(field, field["name"], self) for field in classified["formulas"]
+        ]
 
-        many_to_one_fields = [ManyToOneField(field, self) for field in classified["connections"]["many_to_one"]]
+        many_to_one_fields = [
+            ManyToOneField(field, field["name"], self)
+            for field in classified["connections"]["many_to_one"]
+        ]
 
-        many_to_many_fields = [ManyToManyField(field, self) for field in classified["connections"]["many_to_many"]]
+        many_to_many_fields = [
+            ManyToManyField(field, field["name"], self)
+            for field in classified["connections"]["many_to_many"]
+        ]
 
-        standard_fields = [StandardField(field, self) for field in classified["standard"]]
+        standard_fields = [
+            StandardField(field, field["name"], self)
+            for field in classified["standard"]
+        ]
 
-        return concats + formula_fields + many_to_one_fields + many_to_many_fields + standard_fields
+        return (
+            concats
+            + formula_fields
+            + many_to_one_fields
+            + many_to_many_fields
+            + standard_fields
+        )
 
     def _classify_fields(self):
         fields = {
-            "concats" : [],
+            "concats": [],
             "formulas": [],
-            "connections": {
-                "many_to_one": [],
-                "many_to_many": []
-            },
-            "standard": []
+            "connections": {"many_to_one": [], "many_to_many": []},
+            "standard": [],
         }
 
-        for field in self.fields:
+        for field in self.fields_knack:
             if field["type"] == "concatenation":
                 fields["concats"].append(field)
 
@@ -109,7 +118,7 @@ class Table:
                     fields["connections"][connection_type].append(field)
                 except KeyError:
                     # assume one-to-many field (handled the same as many-to-one)
-                    fields["connections"]["many_to_one"].append(field) 
+                    fields["connections"]["many_to_one"].append(field)
 
             else:
                 fields["standard"].append(field)
@@ -139,10 +148,22 @@ class Table:
         return self.sql
 
     def create_field_map(self):
-        self.field_map = {
-            field.key_knack: {"name": field.name_postgres, "type": field.type_knack}
-            for field in self.fields
-        }
+
+        self.field_map = {}
+
+        for field in self.fields:
+            try:
+                key = field.key_knack
+            except AttributeError:
+                # Primary keys are MetaField classes that do not have `knack` properties.
+                # Ignore them.
+                continue
+
+            self.field_map[key] = {
+                "name": field.name_postgres,
+                "type": field.type_knack,
+            }
+
         return None
 
     def _knack_id_field(self):
@@ -151,17 +172,10 @@ class Table:
             "unique": True,
             "name": "knack_id",
             "key": "knack_id",
-            "type": "_knack_id",  # todo: we'll have to map knack record "id" value to this field
+            "type": "_knack_id",
         }
 
-        return FieldDef(knack_id_params, self)
-
-    def _primary_key_field(self):
-
-        return {
-            "required": True,
-            "unique": True,
-            "name": "id",
-            "key": "id",
-            "type": "_pg_primary_key",  # todo: we'll have to map knack record IDs to this new serial
-        }
+    def _drop_knack_id(self):
+        for i, field in enumerate(self.fields):
+            if field.name_postgres == "knack_id":
+                del self.fields[i]

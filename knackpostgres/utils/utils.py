@@ -14,8 +14,17 @@ def valid_pg_name(original_name):
     """
 
     # todo: use the whole dang list: https://www.postgresql.org/docs/current/sql-keywords-appendix.html
-    FORBIDDEN_POSTGRES_NAMES = ["user", "default", "unique", "number", "limit", "table", "column", "view"]
-    
+    FORBIDDEN_POSTGRES_NAMES = [
+        "user",
+        "default",
+        "unique",
+        "number",
+        "limit",
+        "table",
+        "column",
+        "view",
+    ]
+
     # first, make lowercase and replace spaces with underscores
     new_name = original_name.lower().replace(" ", "_")
 
@@ -28,4 +37,4 @@ def valid_pg_name(original_name):
     if new_name in FORBIDDEN_POSTGRES_NAMES:
         new_name = f"_{new_name}"
 
-    return new_name, original_name
+    return new_name

@@ -1,38 +1,25 @@
 from knackpostgres.config.constants import FIELD_DEFINITIONS, TAB
+from knackpostgres.fields._field import Field
 from knackpostgres.utils.utils import valid_pg_name
 
 
-class FieldDef:
-    """ Base class for Knack `field` definition wrappers """
+class KnackField(Field):
+    """  Class for Knack `field` definition wrappers """
 
-    def __repr__(self):
-        return f"<{type(self).__name__} '{self.name_postgres}'>"
-
-    def __init__(self, data, table, primary_key=False):
+    def __init__(self, data, name, table):
+        super().__init__(data, name, table)
         """
-        No knack field is used as a primary key. 
-        We generate a primary key field while handling each table, during
-        which we set primary_key = `True`
+        Note that no knack field is used as a primary key. The Knack built-in `id`
+        field is converted to `id_knack` and used by the loader when populating
+        connection fields. We generate a primary key(type = `_pg_primary_key`) field
+        in the base `Table` class on __init__.
         """
-        self.table = table
-
-        self.primary_key = primary_key
-
         for key in data:
             setattr(self, key + "_knack", data[key])
 
-        self.sql = None
-
-        # convert field name to underscore and presever original
-        self.name_postgres, self.name_knack = valid_pg_name(self.name_knack)
-
         self.default_postgres = self._set_default()
-
         self.constraints = self._get_constraints()
-
         self.data_type = self._postgres_data_type(self.type_knack)
-
-        self._handle_rules()
 
     def _postgres_data_type(self, type_knack):
 
@@ -87,14 +74,6 @@ class FieldDef:
         else:
             return self.default_knack
 
-
-    def _handle_rules(self):
-        # SOMEDAY!
-        # if hasattr(self, "rules"):
-        #     if self.rules:
-        #         print(self.rules)
-        return None
-
     def _get_constraints(self):
         constraints = []
 
@@ -130,11 +109,13 @@ class FieldDef:
 
     def to_sql(self):
 
-        pk = "PRIMARY KEY" if self.primary_key else ""
+        pk = "PRIMARY KEY" if self.is_primary_key else ""
 
         default = self._format_default()
 
         constraints = " ".join(self.constraints) if self.constraints else ""
 
-        self.sql = f"{self.name_postgres} {self.data_type} {pk} {default}{constraints}".strip()
+        self.sql = (
+            f"{self.name_postgres} {self.data_type} {pk} {default}{constraints}".strip()
+        )
         return self.sql

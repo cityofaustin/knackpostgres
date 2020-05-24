@@ -4,6 +4,7 @@ import sys
 
 import psycopg2
 
+
 class Loader:
     """ Wrapper for executing Knack applicaton SQL commands """
 
@@ -15,12 +16,17 @@ class Loader:
 
         # if true, will drop entire public schema from dest database!
         self.overwrite = overwrite
-        
+
         # connection sql must be provided by Translator class (see README)
         self.connections_sql = []
 
     def connect(
-        self, host="localhost", dbname="postgres", user="postgres", password=None, port=5432
+        self,
+        host="localhost",
+        dbname="postgres",
+        user="postgres",
+        password=None,
+        port=5432,
     ):
         if not password:
             raise AttributeError("`password` is required to connect.")
@@ -53,13 +59,17 @@ class Loader:
         schema = []
         self.execute(f"DROP SCHEMA {self.app.schema} CASCADE;")
         self.execute(f"DROP SCHEMA {self.app.metadata_schema} CASCADE;")
-        # self.execute(f"CREATE SCHEMA {self.app.metadata_schema};")
 
     def create_schema(self):
         self.execute(self.app.schema_sql)
-        self.execute(f"ALTER DATABASE {self.dbname} SET search_path TO {self.app.schema},{self.app.metadata_schema}")
+        self.execute(
+            f"ALTER DATABASE {self.dbname} SET search_path TO {self.app.schema},{self.app.metadata_schema}"
+        )
 
     def create_tables(self):
+        for table in self.app.metadata:
+            self.execute(table.sql)
+
         for table in self.app.tables:
             self.execute(table.sql)
 
