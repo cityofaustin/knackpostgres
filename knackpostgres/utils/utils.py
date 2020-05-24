@@ -12,6 +12,8 @@ def valid_pg_name(original_name):
 
     Docs: https://www.postgresql.org/docs/9.1/sql-syntax-lexical.html
     """
+
+    # todo: use the whole dang list: https://www.postgresql.org/docs/current/sql-keywords-appendix.html
     FORBIDDEN_NAMES = ["user", "default", "unique", "number", "limit", "table", "column", "view"]
     
     # first, make lowercase and replace spaces with underscores
