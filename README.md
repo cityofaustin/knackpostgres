@@ -67,7 +67,7 @@ docker run -it --rm --network host my-db-name psql -h localhost -U postgres
 ### Deploy Knack Database Schema to PostgreSQL
 
 *You'll need to manually install [`psycopg2`](https://pypi.org/project/psycopg2/) into your Python environment. Because of installation headaches, it is not installed automatically.
-(*TODO: use docker ;)*)*
+TODO: use docker ;)*
 
 The `Loader` class is available to execute your App's data into a PostgreSQL database.
 
