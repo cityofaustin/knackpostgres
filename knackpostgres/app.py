@@ -15,9 +15,8 @@ from knackpostgres.tables.table import Table
 from knackpostgres.tables.reference_table import ReferenceTable
 from knackpostgres.tables.view import View
 from knackpostgres.tables.meta_table import MetaTable
-from .scene import Scene
+from knackpostgres.scene import Scene
 
-pdb.set_trace()
 class App:
     """
     Knack application wrapper. Stores app meta data, tables, fields, etc.
