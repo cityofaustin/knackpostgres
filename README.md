@@ -45,7 +45,7 @@ $ pip install knackpostgres
 If you want to execute the SQL commandsd manually, you can write the App's SQL commands to files:
 
 ```python
->>> app.to_sql(path="mypath") # writes statements to mypath/sql directory
+>>> app.to_sql(path="sql") # `sql` is the default relative path
 ```
 
 Alternatively, you can use the `Loader` class to execute your app's SQL. Read on...
@@ -54,19 +54,21 @@ Alternatively, you can use the `Loader` class to execute your app's SQL. Read on
 
 If you're in need of a postgresql database for development. Consider the [official docker images](https://hub.docker.com/_/postgres).
 
-To start your database with the default username (`postgres`), start the database in a new container:
+To start your database with the default username (`postgres`) in a new container:
 
 ```bash
 $ docker run -p 5432:5432 --name postgres -e POSTGRES_PASSWORD=my_password -d my-db-name
 ```
 
-If you want to explore the database with `psql`, open a separate terminal window and run
+You can explore the database by connecting with a `psql` container: 
 
 ```bash
 docker run -it --rm --network host my-db-name psql -h localhost -U postgres
 ```
 
 ### Deploy Knack Database Schema to PostgreSQL
+
+The `Loader` class is available to execute your App's SQL, 
 
 * Install [`psycopg2`](https://pypi.org/project/psycopg2/) in your Python environment.
 
@@ -85,10 +87,12 @@ Connect to your database:
 
 ```python
 >>> loader.connect(
-    host="localhost",
-    dbname="my-db-name",
-    user="postgres",
-    password="myunguessabledatabasepassword" )
+    host="localhost", # default
+    dbname="postgres", # default
+    port=5432, # default
+    user="postgres", # default
+    password="myunguessabledatabasepassword",
+    )
 ```
 
 Execute your `App`'s sql commands:
