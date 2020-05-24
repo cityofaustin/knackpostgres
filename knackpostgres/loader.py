@@ -1,7 +1,9 @@
 import csv
 import logging
+import sys
 
 import psycopg2
+
 
 class Loader:
     """ Wrapper for executing Knack applicaton SQL commands """
@@ -26,18 +28,31 @@ class Loader:
             host=host, dbname=dbname, user=user, password=password
         )
         self.conn.autocommit = True
-        return self.conn
+        self._confirm_overwrite()
+        return None
+
+    def _confirm_overwrite(self):
+        if not self.overwrite:
+            return None
+
+        print(
+            "\n!! You are about to overwrite the public schema in the destination database !!"
+        )
+        confirmed = input('Type "yes"` to continue.\n')
+
+        if confirmed.lower() != "yes":
+            print("Loader aborted.")
+            sys.exit()
+
+        self._drop_destination_schema()
+
+    def _drop_destination_schema(self):
+        self.execute("DROP SCHEMA public CASCADE;")
+        self.execute("CREATE SCHEMA public;")
 
     def create_tables(self):
-
-        with self.conn.cursor() as cursor:
-            if self.overwrite:
-                cursor.execute("DROP SCHEMA public CASCADE;")
-                cursor.execute("CREATE SCHEMA public;")
-
-            for table in self.app.tables:
-                self._execute_sql(cursor, table.sql, table.name_postgres)
-
+        for table in self.app.tables:
+            self.execute(table.sql)
 
     def _sequence_views(self):
         """
@@ -48,13 +63,13 @@ class Loader:
         TODO: what about co-dependent views? yikes.
         """
         sequenced_view_names = []
-        
+
         # first, we generate a list of view names in order
         # using the `depends_on` attribute of each view
         for i, view in enumerate(self.app.views):
             if view.name in sequenced_view_names:
                 continue
-            
+
             if not view.depends_on:
                 sequenced_view_names.insert(0, view.name)
                 continue
@@ -66,67 +81,43 @@ class Loader:
 
             sequenced_view_names.append(view.name)
 
-
         # now we re-order the actual view classes in the app
-
         sequenced_views = []
         for view_name in sequenced_view_names:
             for view in self.app.views:
                 if view.name == view_name:
                     sequenced_views.append(view)
+
         return sequenced_views
 
     def create_views(self):
         self.app.views = self._sequence_views()
 
-        with self.conn.cursor() as cursor:
-            for view in self.app.views:
-                self._execute_sql(cursor, view.sql, view.name)
-
-    def insert_each(self, translator):
-        with self.conn.cursor() as cursor:
-            for statement in translator.sql:
-                self._execute_sql(cursor, statement, translator.table.name_postgres)
+        for view in self.app.views:
+            self.execute(view.sql)
 
     def update_connections(self):
-        
+        for sql in self.connections_sql:
+            self.execute(sql)
+
+    def execute(self, sql):
+        """ executes a singal sql statement or a list of them """
         with self.conn.cursor() as cursor:
-            for statement in self.connections_sql:
-                self._execute_sql(cursor, statement, "connection")
+            try:
+                self._execute_one(cursor, sql)
 
+            except TypeError:
+                self._execute_many(cursor, sql)
 
-    def _execute_sql(self, cursor, sql, name):
-        try:
+            except psycopg2.ProgrammingError as e:
+                logging.error(e)
+                pass
+
+    def _execute_one(self, cursor, sql):
+        return cursor.execute(sql)
+
+    def _execute_many(self, cursor, sql_list):
+        for sql in sql_list:
             cursor.execute(sql)
-            logging.info(f"Created {name}")
 
-        except psycopg2.ProgrammingError as e:
-            logging.error(f"Failed to create {name}")
-            logging.error(e)
-            pass
-
-    # def load_csv(self, translator):
-    #     table_name = translator.table.name_postgres
-    #     # records = json.loads(json.dumps(translator.records))
-    #     # sql_string = 'INSERT INTO {} '.format( table_name )
-    #     # columns = translator.fieldnames
-    #     # values = []
-    #     # for record in records:
-    #     #     for k, v in record.items:
-    #     #         val = "'" + val + "'"
-    #     # import pdb; pdb.set_trace()
-    #     # import json
-    #     # import io
-
-
-    #     # with self.conn.cursor() as cursor:
-    #     #     for record in translator.records:
-    #     #         json_to_write = json.dumps(record).replace('\\','\\\\')
-    #     #         buffer_ = io.StringIO(json_to_write)                
-    #     #         cursor.copy_from(buffer_, table_name, columns=translator.fieldnames, sep=",")
-    #     #         pdb.set_trace()
-    #     # pdb.set_trace()
-
-    #     with open(translator.fname, "r") as fin:
-    #         with self.conn.cursor() as cursor:
-    #             cursor.copy_from(fin, table_name, columns=translator.fieldnames, sep="|")
+        return None
