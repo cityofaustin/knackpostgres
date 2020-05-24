@@ -6,8 +6,6 @@ Convert Knack applications to a PostgreSQL database.
 
 ## Installation
 
-*If you want to use the `Loader` class to load data to a Postgres database, you'll need to install [`psycopg2`](https://pypi.org/project/psycopg2/) manually. Because of installation headaches, it is not installed automatically.*
-
 1. Clone this repo
 
 ```bash
@@ -68,11 +66,12 @@ docker run -it --rm --network host my-db-name psql -h localhost -U postgres
 
 ### Deploy Knack Database Schema to PostgreSQL
 
-The `Loader` class is available to execute your App's SQL, 
+*You'll need to manually install [`psycopg2`](https://pypi.org/project/psycopg2/) into your Python environment. Because of installation headaches, it is not installed automatically.
+(*TODO: use docker ;)*)*
 
-* Install [`psycopg2`](https://pypi.org/project/psycopg2/) in your Python environment.
+The `Loader` class is available to execute your App's data into a PostgreSQL database.
 
-Pass your `App` to a new `Loader` instance.
+Start by passing your `App` to a new `Loader` instance.
 
 ```python
 >>> from knackpostgres import App, Loader
@@ -110,9 +109,12 @@ Execute your `App`'s sql commands:
 Your schema has been created! Now you can load data.
 
 ```python
+    [...]
+    
     import KnackTranslator, MetaTranslator
     from knackpy import Knack
 
+    [...]
     """
     We first load the apps field metadata `_meta._fields`
     """
