@@ -37,7 +37,7 @@ class Loader:
             return None
 
         print(
-            "\n!! You are about to overwrite the public schema in the destination database !!"
+            f"\n!! You are about to overwrite the `{self.app.schema}` and `{self.app.metadata_schema}` schema in the destination database !!"
         )
         confirmed = input('Type "yes"` to continue.\n')
 
