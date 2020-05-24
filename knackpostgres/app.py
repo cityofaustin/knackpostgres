@@ -9,12 +9,10 @@ from knackpy import get_app_data
 
 from knackpostgres.fields.formula_field import FormulaField
 from knackpostgres.fields.concatenation_field import ConcatenationField
-from knackpostgres.config.constants import TAB
 from knackpostgres.tables.knack_table import KnackTable
 from knackpostgres.tables.metadata_table import MetaTable
 from knackpostgres.tables.reference_table import ReferenceTable
 from knackpostgres.tables.view import View
-from knackpostgres.tables.metadata_table import MetaTable
 from knackpostgres.scene import Scene
 from knackpostgres.utils.utils import valid_pg_name
 
@@ -22,18 +20,12 @@ from knackpostgres.utils.utils import valid_pg_name
 class App:
     """
     Knack application wrapper. Stores app meta data, tables, fields, etc.
+    Receives a Knack application ID str and returns App instance.
     
-    Receives a Knack application ID string and returns App instance.
-
-    On instanciation, will fetch app metadata and prepare output SQL statements.
-
     Usage:
-
     >>> `app = App("myappid")`
     >>> app.to_sql()   # write to /sql dir
-
     """
-
     def __repr__(self):
         return f"<App {self.name}> ({len(self.objects)} objects)"
 
@@ -43,17 +35,18 @@ class App:
 
         self.app_id = app_id
 
-        # optional include only object keys specified in filter
+        # optionally include only object keys specified in filter
         self.obj_filter = obj_filter
 
-        # all tables will be written here, except for meta tables, which go to schema __meta__
+        # all data will be written to `schema`, except for metadata, which writes to 
+        # `metadata_schema`
         self.schema = valid_pg_name(schema)
         self.metadata_schema = valid_pg_name(metadata_schema)
 
-        # fetch knack metadata
         self.metadata_knack = self._get_app_data()
 
         # assign knack metadata to class attributes
+        # TODO: we really should be explicit about this
         for key in self.metadata_knack:
             setattr(self, key, self.metadata_knack[key])
 
@@ -67,9 +60,10 @@ class App:
 
         self._handle_formulae()
 
+        # These are database views, not Knack "views" ;)
         self.views = (
             self._handle_views()
-        )  # these are database views, not Knack "views" ;)
+        )
 
         self.metadata = self._set_metadata()
 
@@ -81,10 +75,8 @@ class App:
 
     def to_sql(self, path="sql"):
         """
-        Write application SQL commands to file.
-
-        Alternatively, use the `Loader` class to connect/write directly
-        from the `App` class.
+        Write application SQL commands to file. Alternatively, use the `Loader` class
+        to connect/write directly from the `App` class.
         """
         self._write_sql(self.schema_sql, path, "schema", self.schema)
 
@@ -143,10 +135,10 @@ class App:
 
     def _update_many_to_many_relationships(self):
         """
-        Ah what a joy are many-to-many relationships. to handle these, we need
+        Ah, many-to-many relationships. To handle these, we need
         to create an associative table which holds relationships across two
-        tables. we accomplish this by parsing each relationship definition
-        and calling a new `Table` class with the appriate `FieldDef` classes.
+        tables. We accomplish this by parsing each relationship definition
+        and calling a new `Table` class with the appriate `Field` classes.
 
         Obviously this all needs to happen after all other tables and fields
         have been instanciated (except for formulae, which rely on relationships)
@@ -202,7 +194,7 @@ class App:
 
     def find_field_from_field_key(self, key, return_attr=None):
         """
-        from a knack field key, track down the `FieldDef` instance
+        from a knack field key, track down the `Field` instance
         """
         for table in self.tables:
             for field in table.fields:
@@ -226,7 +218,7 @@ class App:
 
     def find_table_from_field_key(self, key, return_attr=None):
         """
-        from a knack field key, track down the table in which that field lives
+        From a knack field key, track down the table in which that field lives
         """
         try:
             # some times the connection is under "key", and somtimes it's a string literal
