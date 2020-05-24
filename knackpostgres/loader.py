@@ -15,6 +15,8 @@ class Loader:
 
         # if true, will drop entire public schema from dest database!
         self.overwrite = overwrite
+        
+        # connection sql must be provided by Translator class (see README)
         self.connections_sql = []
 
     def connect(
