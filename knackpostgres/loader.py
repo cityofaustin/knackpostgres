@@ -20,7 +20,7 @@ class Loader:
         self.connections_sql = []
 
     def connect(
-        self, host="localhost", dbname="postgres", user="postgres", password=None
+        self, host="localhost", dbname="postgres", user="postgres", password=None, port=5432
     ):
         if not password:
             raise AttributeError("`password` is required to connect.")
@@ -28,7 +28,7 @@ class Loader:
         self.dbname = dbname
 
         self.conn = psycopg2.connect(
-            host=host, dbname=dbname, user=user, password=password
+            host=host, dbname=dbname, user=user, password=password, port=port
         )
         self.conn.autocommit = True
         self._confirm_overwrite()
