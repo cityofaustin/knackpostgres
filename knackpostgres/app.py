@@ -16,6 +16,7 @@ from knackpostgres.tables.reference_table import ReferenceTable
 from knackpostgres.tables.view import View
 from knackpostgres.tables.meta_table import MetaTable
 from knackpostgres.scene import Scene
+from knackpostgres.utils.utils import valid_pg_name
 
 class App:
     """
@@ -35,12 +36,16 @@ class App:
     def __repr__(self):
         return f"<App {self.name}> ({len(self.objects)} objects)"
 
-    def __init__(self, app_id, obj_filter=None):
+    def __init__(self, app_id, obj_filter=None, schema="public", metadata_schema="__meta__"):
 
         self.app_id = app_id
 
         # optional include only object keys specified in filter
         self.obj_filter = obj_filter
+
+        # all tables will be written here, except for meta tables, which go to schema __meta__
+        self.schema = valid_pg_name(schema)[0]
+        self.metadata_schema = valid_pg_name(metadata_schema)[0]
 
         # fetch knack metadata
         self.metadata_knack = self._get_app_data()
@@ -63,9 +68,11 @@ class App:
             self._handle_views()
         )  # these are database views, not Knack "views" ;)
 
-        self.tables.append(MetaTable(self))
+        self.tables.append(MetaTable(self, self.metadata_schema))
 
         self.scenes = self._handle_scenes()
+
+        self.schema_sql = self._generate_schema_sql()
 
         logging.info(self)
 
@@ -76,11 +83,24 @@ class App:
         Alternatively, use the `Loader` class to connect/write directly
         from the `App` class.
         """
+        self._write_sql(
+            self.schema_sql,
+            path,
+            "schema",
+            self.schema
+        )
+
         for table in self.tables:
             self._write_sql(table.to_sql(), path, "tables", table.name_postgres)
 
         for view in self.views:
             self._write_sql(view.sql, path, "views", view.name)
+
+    def _generate_schema_sql(self):
+        schema = [self.schema, self.metadata_schema]
+
+        schema_sql = [f"CREATE SCHEMA IF NOT EXISTS {schema_name};" for schema_name in schema]
+        return "\n".join(schema_sql)
 
     def _write_sql(self, sql, path, subdir, name_attr, method="w"):
 
@@ -98,9 +118,9 @@ class App:
 
     def _generate_tables(self):
         if self.obj_filter:
-            return [Table(obj) for obj in self.objects if obj["key"] in self.obj_filter]
+            return [Table(obj, self.schema) for obj in self.objects if obj["key"] in self.obj_filter]
         else:
-            return [Table(obj) for obj in self.objects]
+            return [Table(obj, self.schema) for obj in self.objects]
 
     def _handle_views(self):
         return [View(table) for table in self.tables]
@@ -135,7 +155,7 @@ class App:
         for field in fields:
             field.set_relationship_references(self)
 
-            tables.append(ReferenceTable(field.reference_table_data))
+            tables.append(ReferenceTable(field.reference_table_data, schema=self.schema))
 
         return tables
 

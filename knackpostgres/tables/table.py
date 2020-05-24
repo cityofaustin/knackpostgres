@@ -14,15 +14,19 @@ class Table:
     def __repr__(self):
         return f"<Table {self.name_postgres}> ({len(self.fields)} fields)"
 
-    def __init__(self, data):
+    def __init__(self, data, schema):
         # where data is knack "objects" list from app data
 
         for key in data:
             setattr(self, key, data[key])
 
+        self.schema = schema
+
         self.name_postgres, self.name_knack = valid_pg_name(self.name)
 
         self.fields = self._handle_fields()
+
+        
 
     def update_one_to_many_relationships(self, obj_lookup):
 

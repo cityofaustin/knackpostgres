@@ -1,3 +1,3 @@
 from .app import App
-from .translator import Translator
-from .loader import *
+from .translator import KnackTranslator, MetaTranslator
+from .loader import Loader

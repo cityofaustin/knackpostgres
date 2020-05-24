@@ -5,8 +5,8 @@ class ReferenceTable(Table):
     """
     Create a `reference` or `associative` table in which to store many-to-many relationship references.
     """
-    def __init__(self, data):
-        super().__init__(data)
+    def __init__(self, data, schema):
+        super().__init__(data, schema)
         
         self._drop_knack_id()
         

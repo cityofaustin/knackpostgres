@@ -22,20 +22,65 @@ IGNORE_FIELD_TYPES = [
 
 class Translator:
     """
+    Base class for Translators.
+    """
+
+    def __init__(self):
+        self.records = []
+        self.table = None
+        pass
+
+    def _values_sql(self, values):
+        
+        values_sql = []
+        
+        for value in values:
+            if type(value) == list:
+                value_str = ", ".join([f"\"{val}\"" for val in value])
+                values_sql.append(f"\'{{{value_str}}}\'")
+            else:
+               values_sql.append(f"'{value}'")
+        
+        return ", ".join([sql for sql in values_sql])
+
+
+    def to_sql(self, path="data"):
+        path = Path.cwd() / path
+        path.mkdir(exist_ok=True)
+        self.fname = path / (self.table.name_postgres + ".sql")
+
+        statements = []
+
+        with open(self.fname, "w") as fout:
+
+            for record in self.records:
+                columns = ", ".join(record.keys())
+                values = self._values_sql(record.values())
+                sql = f"""INSERT INTO {self.table.schema}.{self.table.name_postgres} ({columns}) VALUES\n({values});\n\n"""
+                sql = sql.replace(f"'{PG_NULL}'", "NULL")
+                fout.write(sql)
+                statements.append(sql)
+
+        logging.info(f"{self.fname} - {len(self.records)} records")
+        self.sql = statements
+
+
+class KnackTranslator(Translator):
+    """
     Translate Knack records to destination postgresql schema. Generate insert and update
     statements data loading.
     """
-
     def __repr__(self):
-        return f"<Translator {self.knack.obj} to {self.table.name_postgres}>"
+        return f"<KnackTranslator {self.knack.obj} to {self.table.name_postgres}>"
 
     def __init__(self, knack, table):
-        # where knack is a knackpy.Knack object and table is a Table class instance
+        super().__init__()
+
+        # where `knack` is a knackpy.Knack object and `table` is a Table class instance
         self.knack = knack
         self.table = table
 
         if not self.knack.data_raw:
-            logging.warning(f"{self}: no records to process.")
             raise IndexError(f"No records found at {self.knack.obj}")
 
         self.knack.data_raw = self._replace_raw_fieldnames()
@@ -99,7 +144,6 @@ class Translator:
                             )
                         )
 
-
         return conn_data
 
     def _connection_record(
@@ -153,7 +197,7 @@ class Translator:
             for field in record.keys():
                 if field in conn_fields:
                     vals = record[field]
-                    
+
                     if not vals:
                         continue
 
@@ -311,53 +355,22 @@ class Translator:
 
         return new_records
 
-    def to_sql(self, path="data"):
-        path = Path.cwd() / path
-        path.mkdir(exist_ok=True)
-        self.fname = path / (self.table.name_postgres + ".sql")
 
-        statements = []
+class MetaTranslator(Translator):
+    """
+    Translate App metadata to destination postgresql schema.
+    Skips all of the record translation from Knack, and instead just
+    writes from records supplied in the App'a meta_table.
+    """
 
-        with open(self.fname, "w") as fout:
+    def __repr__(self):
+        return f"<MetaTable {self.name_postgres}>"
 
-            for record in self.records:
-                columns = record.keys()
-                columns = ", ".join(columns)
+    def __init__(self, meta_table):
+        super().__init__()
 
-                values = ", ".join([f"'{val}'" for key, val in record.items()])
+        self.table = meta_table
+        self.records = self.table.records
 
-                sql = f"""INSERT INTO {self.table.name_postgres} ({columns}) VALUES\n({values});\n\n"""
-
-                sql = sql.replace(f"'{PG_NULL}'", "NULL")
-
-                fout.write(sql)
-                statements.append(sql)
-
-        logging.info(f"{self.fname} - {len(self.records)} records")
-        self.sql = statements
-
-    def to_csv(self, records=None, path="data"):
-
-        if not records:
-            records = self.records
-
-        path = Path.cwd() / path
-        path.mkdir(exist_ok=True)
-        self.fname = path / (self.table.name_postgres + ".csv")
-
-        with open(self.fname, "w") as fout:
-
-            self.fieldnames = [field for field in records.keys()]
-
-            writer = csv.DictWriter(
-                fout, fieldnames=self.fieldnames, quotechar="'", delimiter="|"
-            )
-
-            # we don't write the header. because postgresql
-            # doesn't want it. you can fetch them from self.fieldnames
-            # writer.writeheader()
-
-            for record in records:
-                writer.writerow(record)
-
-        print(f"{self.fname} - {len(self.records)} records")
+    def set_records(self, records):
+        self.records = records

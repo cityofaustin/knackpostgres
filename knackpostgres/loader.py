@@ -4,7 +4,6 @@ import sys
 
 import psycopg2
 
-
 class Loader:
     """ Wrapper for executing Knack applicaton SQL commands """
 
@@ -23,6 +22,8 @@ class Loader:
     ):
         if not password:
             raise AttributeError("`password` is required to connect.")
+
+        self.dbname = dbname
 
         self.conn = psycopg2.connect(
             host=host, dbname=dbname, user=user, password=password
@@ -47,8 +48,14 @@ class Loader:
         self._drop_destination_schema()
 
     def _drop_destination_schema(self):
-        self.execute("DROP SCHEMA public CASCADE;")
-        self.execute("CREATE SCHEMA public;")
+        schema = []
+        self.execute(f"DROP SCHEMA {self.app.schema} CASCADE;")
+        self.execute(f"DROP SCHEMA {self.app.metadata_schema} CASCADE;")
+        # self.execute(f"CREATE SCHEMA {self.app.metadata_schema};")
+
+    def create_schema(self):
+        self.execute(self.app.schema_sql)
+        self.execute(f"ALTER DATABASE {self.dbname} SET search_path TO {self.app.schema},{self.app.metadata_schema}")
 
     def create_tables(self):
         for table in self.app.tables:
