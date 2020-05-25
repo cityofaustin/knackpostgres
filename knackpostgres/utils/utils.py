@@ -1,3 +1,19 @@
+
+def escape_single_quotes(string):
+    return string.replace("'", "\\\'")
+    
+def wrap_single_quotes(string):
+    return f"\'{string}\'"
+
+def clean_whitespace(string):
+    """
+    Remove leading/trailing whitespace, and internal whitespace > 1 space.
+    WARNING: will remove multiple whitespace characters from quoted strings. E.g.,
+    `stringy_field  DEFAULT 'default   with multiple whitespace'` becomes 
+    `stringy_field  DEFAULT 'default with multiple whitespace'`
+    """
+    return ' '.join(string.split())
+
 def valid_pg_name(original_name):
     """
     Convert an arbitrary string into a postgres-compliant name.

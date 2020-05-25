@@ -1,19 +1,7 @@
 from knackpostgres.tables._table import Table
 from knackpostgres.fields.meta_field import MetaField
-from knackpostgres.config.constants import FIELD_DEFINITIONS, PG_NULL
-
-METADATA_FIELDS = [
-    {"name": "column_name", "type": "TEXT"},
-    {"name": "data_type", "type": "TEXT"},
-    {"name": "input_type", "type": "TEXT"},
-    {"name": "table_name", "type": "TEXT"},
-    {"name": "view_name", "type": "TEXT"},
-    {"name": "is_primary_key", "type": "BOOLEAN"},
-    {"name": "options", "type": "TEXT[]"},
-    {"name": "read_only", "type": "BOOLEAN"},
-    {"name": "is_formula", "type": "BOOLEAN"},
-    {"name": "is_connection", "type": "BOOLEAN"},
-]
+from knackpostgres.config.constants import PG_NULL
+from knackpostgres.config.metadata import METADATA_FIELDS
 
 
 class MetaTable(Table):
@@ -27,26 +15,59 @@ class MetaTable(Table):
         self.rows = self._get_rows(data)
 
     def _get_fields(self):
-        return [MetaField(field, field["name"], self) for field in METADATA_FIELDS]
+        return [MetaField(field, field["name"], self) for field in METADATA_FIELDS.get(self.name_postgres)]
+
+    def _get_row(self, field):
+        # todo: so...need to refactor for this nonsense with metadata fields
+        row = {}
+        
+        for metafield in self.fields:
+            name = metafield.name_postgres
+            accessor = metafield.accessor
+            
+            if not accessor:
+                # skip, for excample, the tables primary key field
+                continue
+
+            val = None
+
+            try:
+                # assume accessor is a field property
+                val = getattr(field, accessor)
+
+            except AttributeError:
+                pass
+
+            try:
+                # try to access property at field.abc.xyz
+                accessors = metafield.accessor.split(".")
+                subclass = getattr(field, accessors[0])
+                val = getattr(field, accessors[1])
+
+            except (IndexError, AttributeError):
+                pass
+
+            try:
+                # ok, accessor is not a field property, so try handler
+                handler = getattr(self, accessor)
+                val = handler(field)
+
+            except Exception as e:
+                pass
+
+            row[name] = val
+
+        return row
 
     def _get_rows(self, data):
         rows = []
 
         for field in data:
-            rows.append(
-                {
-                    "column_name": field.name_postgres,
-                    "data_type": field.data_type,
-                    "input_type": self._handle_type(field),
-                    "table_name": field.table.name_postgres,
-                    "view_name": "not_implemented",
-                    "is_primary_key": field.is_primary_key,
-                    "options": self._handle_options(field),
-                    "is_formula": getattr(field, "is_formula", None),
-                    "is_connection": getattr(field, "is_connection", None),
-                }
-            )
+            row = self._get_row(field)
+            rows.append(row)
+           
         rows = self._convert_nulls(rows)
+
         return rows
 
     def _convert_nulls(self, rows):
@@ -67,10 +88,6 @@ class MetaTable(Table):
     def _handle_type(self, field):
         if field.is_primary_key:
             return "_pg_primary_key"
-
-        elif field.type_knack == "multiple_choice":
-            return field.format_knack.get("type")
-
         else:
             return field.type_knack
 

@@ -1,7 +1,6 @@
 from knackpostgres.utils.utils import valid_pg_name
 from knackpostgres.fields.meta_field import MetaField
 
-
 class Table:
     """ A Knack table (`object`) wrapper """
 
@@ -18,10 +17,8 @@ class Table:
 
     def _primary_key_field(self):
         field_data = {
-            "required": True,
-            "unique": True,
             "name": "id",
-            "key": "id",
-            "type": "SERIAL",
+            "data_type": "SERIAL",
+            "is_primary_key": True
         }
         return MetaField(field_data, field_data["name"], self)

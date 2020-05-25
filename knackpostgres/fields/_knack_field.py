@@ -17,7 +17,7 @@ class KnackField(Field):
         for key in data:
             setattr(self, key + "_knack", data[key])
 
-        self.default_postgres = self._set_default()
+        self.default = self._set_default()
         self.constraints = self._get_constraints()
         self.data_type = self._postgres_data_type(self.type_knack)
 
@@ -84,38 +84,3 @@ class KnackField(Field):
             constraints.append("UNIQUE")
 
         return constraints if constraints else None
-
-    def _format_default(self):
-
-        default = self.default_postgres
-
-        # i must be missing something, but an inline if was not properly handling an empty string string
-        if default == None:
-            return ""
-
-        elif type(default) == bool:
-            default = str(default).upper()
-
-        elif self.data_type == "NUMERIC":
-            # knack provides numeric defaults as strings :/
-            default = float(default)
-
-        elif type(default) == str:
-            # escape any single quotes
-            default = default.replace("'", "\\'")
-            default = f"'{default}'"
-
-        return f"DEFAULT {default} "
-
-    def to_sql(self):
-
-        pk = "PRIMARY KEY" if self.is_primary_key else ""
-
-        default = self._format_default()
-
-        constraints = " ".join(self.constraints) if self.constraints else ""
-
-        self.sql = (
-            f"{self.name_postgres} {self.data_type} {pk} {default}{constraints}".strip()
-        )
-        return self.sql
