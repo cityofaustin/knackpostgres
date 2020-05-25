@@ -8,6 +8,7 @@ from knackpostgres.utils.data_handlers import DataHandlers
 from knackpostgres.config.constants import PG_NULL
 
 
+# TODO: you're better than this
 IGNORE_FIELD_TYPES = [
     "concatenation",
     "max",
