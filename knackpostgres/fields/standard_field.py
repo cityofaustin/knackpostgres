@@ -3,7 +3,7 @@ from knackpostgres.config.constants import FIELD_DEFINITIONS
 
 
 class StandardField(KnackField):
-    """ Knack foruma field definition wrapper """
+    """ Field definition wrapper for plain ole knack fields """
 
     def __init__(self, data, name, table):
         super().__init__(data, name, table)
