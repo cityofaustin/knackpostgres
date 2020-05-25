@@ -1,10 +1,15 @@
 import csv
+import json
 import logging
 from pathlib import Path
+import re
+
+import requests
 
 from knackpostgres.fields.many_to_one_field import ManyToOneField
 from knackpostgres.fields.many_to_many_field import ManyToManyField
 from knackpostgres.utils.data_handlers import DataHandlers
+from knackpostgres.utils.utils import escape_single_quotes, wrap_single_quotes
 from knackpostgres.config.constants import PG_NULL
 
 
@@ -20,49 +25,120 @@ IGNORE_FIELD_TYPES = [
     "equation",
 ]
 
+TEMPLATE = """
+mutation insert_fields {
+  insert_$table(objects: [$objects])
+   { returning {
+        id
+      }
+  }
+}
+"""
 
+# TODO: figure out graphql json nulls
 class Translator:
     """
     Base class for Translators.
     """
+    def __init__(self, table, data):
+        self.data = data
+        self.table = table
+        self.field_type_map = self._generate_field_type_map()
+    
+    def post(self):   
+        endpoint = "http://localhost:8080/v1/graphql"
 
-    def __init__(self):
-        self.data = []
-        self.table = None
-        pass
+        objects = ", ".join(self.graphql)
+    
+        objects = self._replace_nulls(objects)
+        
+        mutation = TEMPLATE.replace("$objects", objects)
 
-    def _values_sql(self, values):
+        if self.table.schema == "public":
+            mutation = mutation.replace("$table", f"{self.table.name_postgres}")
+        else:
+            mutation = mutation.replace("$table", f"{self.table.schema}_{self.table.name_postgres}") 
 
-        values_sql = []
+        res = requests.post(endpoint, json={"query": mutation})
 
-        for value in values:
-            if type(value) == list:
-                value_str = ", ".join([f'"{val}"' for val in value])
-                values_sql.append(f"'{{{value_str}}}'")
-            else:
-                values_sql.append(f"'{value}'")
+        if "errors" in res.text:
+            print(mutation)
+            print(res.text)
 
-        return ", ".join([sql for sql in values_sql])
+        return None
 
-    def to_sql(self, path="data"):
-        path = Path.cwd() / path
-        path.mkdir(exist_ok=True)
-        self.fname = path / (self.table.name_postgres + ".sql")
 
-        statements = []
+    def _replace_nulls(self, string):
+        return string.replace(f"\"{PG_NULL}\"", "null")
 
-        with open(self.fname, "w") as fout:
+    def _replace_quoted_keys(self, string): 
+        KEY_SEARCH = '\"\w+\":'
 
-            for row in self.data:
-                columns = ", ".join(row.keys())
-                values = self._values_sql(row.values())
-                sql = f"""INSERT INTO {self.table.schema}.{self.table.name_postgres} ({columns}) VALUES\n({values});\n\n"""
-                sql = sql.replace(f"'{PG_NULL}'", "NULL")
-                fout.write(sql)
-                statements.append(sql)
+        key_finder = re.compile(KEY_SEARCH)
+        keys = key_finder.findall(string)
 
-        logging.info(f"{self.fname} - {len(self.data)} rows")
-        self.sql = statements
+        for k in keys:
+            dequoted = f"{k[1:-2]}:"
+            string = string.replace(k, dequoted)
+
+        return string
+
+    def _row_to_graphql(self, row):
+        """
+        30 min of searching did not turn up any packages for this. so, John's attempt
+        """
+        # convert lists to postgres arrays
+
+        delete_keys = []
+
+        for key, value in row.items():
+            data_type = self.field_type_map[key]
+
+            if data_type == "JSON" and value == PG_NULL:
+                delete_keys.append(key)
+
+            elif data_type.endswith("[]"):
+                if value == PG_NULL:
+                    continue
+
+                values = []
+
+                for val in value:
+                    if type(val) == str:
+                        val = f'\'{val}\''
+                    elif type(val) == None:
+                        val = 'null'
+
+                    values.append(val)
+
+                pg_array =  ", ".join([val for val in values])
+
+                row[key] = f"{{{pg_array}}}"
+
+        for key in delete_keys:
+            row.pop(key)
+
+        # json gets us most of the way there
+        graphql = json.dumps(row)
+
+        # just need to replace quoted keys
+        graphql = self._replace_quoted_keys(graphql)
+
+        return graphql
+
+    def to_graphql(self):
+
+        graphql = []
+
+        for row in self.data:
+             graphql.append(self._row_to_graphql(row))
+
+        self.graphql = graphql
+        self.post()
+        return None
+
+    def _generate_field_type_map(self):
+        return { field.name_postgres: field.data_type for field in self.table.fields}
 
 
 class KnackTranslator(Translator):
@@ -74,12 +150,11 @@ class KnackTranslator(Translator):
     def __repr__(self):
         return f"<KnackTranslator {self.knack.obj} to {self.table.name_postgres}>"
 
-    def __init__(self, knack, table):
-        super().__init__()
+    def __init__(self, table, data, knack):
+        super().__init__(table, data)
 
         # where `knack` is a knackpy.Knack object and `table` is a Table class instance
         self.knack = knack
-        self.table = table
 
         if not self.knack.data_raw:
             raise IndexError(f"No records found at {self.knack.obj}")
@@ -355,19 +430,3 @@ class KnackTranslator(Translator):
             new_records.append(new_record)
 
         return new_records
-
-
-class MetaTranslator(Translator):
-    """
-    Translate App metadata to destination postgresql schema.
-    Skips all of the record translation from Knack, and instead just
-    writes from records supplied in the App'a meta_table.
-    """
-
-    def __repr__(self):
-        return f"<MetaTable {self.name_postgres}>"
-
-    def __init__(self, metatable):
-        super().__init__()
-        self.table = metatable
-        self.data = self.table.rows
