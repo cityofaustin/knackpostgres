@@ -14,7 +14,7 @@ from knackpostgres.tables.knack_table import KnackTable
 from knackpostgres.tables.metadata_table import MetaTable
 from knackpostgres.tables.reference_table import ReferenceTable
 from knackpostgres.tables.view import View
-from knackpostgres.scene import Scene
+from knackpostgres.pages.scene import Scene
 from knackpostgres.utils.utils import valid_pg_name
 
 
