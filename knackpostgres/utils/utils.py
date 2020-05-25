@@ -1,6 +1,6 @@
 
 def escape_single_quotes(string):
-    return string.replace("'", "\\\'")
+    return string.replace("\'", "\'\'")
     
 def wrap_single_quotes(string):
     return f"\'{string}\'"
