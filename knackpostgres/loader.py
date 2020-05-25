@@ -63,7 +63,7 @@ class Loader:
     def create_schema(self):
         self.execute(self.app.schema_sql)
         self.execute(
-            f"ALTER DATABASE {self.dbname} SET search_path TO {self.app.schema},{self.app.metadata_schema}"
+            f"ALTER DATABASE {self.dbname} SET search_path TO {self.app.schema},'public';"
         )
 
     def create_tables(self):
