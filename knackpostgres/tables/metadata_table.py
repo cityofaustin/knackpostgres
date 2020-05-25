@@ -1,3 +1,4 @@
+from pprint import pprint as print
 from knackpostgres.tables._table import Table
 from knackpostgres.fields.meta_field import MetaField
 from knackpostgres.config.constants import PG_NULL
@@ -24,7 +25,7 @@ class MetaTable(Table):
         for metafield in self.fields:
             name = metafield.name_postgres
             accessor = metafield.accessor
-            
+
             if not accessor:
                 # skip, for excample, the tables primary key field
                 continue

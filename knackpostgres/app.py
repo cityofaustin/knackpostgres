@@ -276,4 +276,6 @@ class App:
         metadata.append(metatable_fields)
         views = [view for scene in self.scenes for view in scene._views]
         metatable_views = MetaTable(views, "_views", self.metadata_schema)
+        metatable_views.to_sql()
+        metadata.append(metatable_views)
         return metadata
