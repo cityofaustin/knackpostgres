@@ -4,6 +4,7 @@ Convert a Knack application to a PostgreSQL Database.
 import logging
 from pathlib import Path
 from pprint import pprint as print
+import shutil
 
 from knackpy import get_app_data
 
@@ -16,6 +17,23 @@ from knackpostgres.tables.view import View
 from knackpostgres.scene import Scene
 from knackpostgres.utils.utils import valid_pg_name
 
+
+APP_ATTRIBUTES = [
+    # todo: implement explicit setting
+    {"name": "app_id", "source": "built_in"},
+    {"name": "id", "source": "knack"},
+    {"name": "metadata", "source": "built_in"},
+    {"name": "metadata_schema", "source": "built_in"},
+    {"name": "metadata_knack", "source": "built_in"},
+    {"name": "name", "source": "knack"},
+    {"name": "obj_filter", "source": "built_in"},
+    {"name": "obj_lookup", "source": "built_in"},
+    {"name": "objects", "source": "knack"},
+    {"name": "scenes", "source": "knack"},
+    {"name": "schema", "source": "built_in"},
+    {"name": "tables", "source": "built_in"},    
+    {"name": "views", "source": "built_in"},
+]
 
 class App:
     """
@@ -30,7 +48,7 @@ class App:
         return f"<App {self.name}> ({len(self.objects)} objects)"
 
     def __init__(
-        self, app_id, obj_filter=None, schema="public", metadata_schema="_meta"
+        self, app_id, obj_filter=None, schema="public", metadata_schema="_meta",
     ):
 
         self.app_id = app_id
@@ -46,7 +64,6 @@ class App:
         self.metadata_knack = self._get_app_data()
 
         # assign knack metadata to class attributes
-        # TODO: we really should be explicit about this
         for key in self.metadata_knack:
             setattr(self, key, self.metadata_knack[key])
 
@@ -65,19 +82,22 @@ class App:
             self._handle_views()
         )
 
-        self.metadata = self._set_metadata()
-
         self.scenes = self._handle_scenes()
+
+        self.metadata = self._set_metadata()
 
         self.schema_sql = self._generate_schema_sql()
 
         logging.info(self)
 
-    def to_sql(self, path="sql"):
+    def to_sql(self, path="sql", overwrite=False):
         """
         Write application SQL commands to file. Alternatively, use the `Loader` class
         to connect/write directly from the `App` class.
         """
+        if overwrite:
+            shutil.rmtree(path)
+
         self._write_sql(self.schema_sql, path, "schema", self.schema)
 
         for table in self.tables:
@@ -218,8 +238,7 @@ class App:
 
     def find_table_from_field_key(self, key, return_attr=None):
         """
-        From a knack field key, track down the table in which that field lives
-        """
+        From a knack field key, track down the table in which that field lives """
         try:
             # some times the connection is under "key", and somtimes it's a string literal
             key = key.get("key")
@@ -242,10 +261,19 @@ class App:
         for scene in self.scenes:
             scenes.append(Scene(scene))
 
+        return scenes
+
+
     def _set_metadata(self):
+        """
+        TODO: these metadata table names are currently hardcoded as
+        `_fields`, `_pages`, and `_sections`. Move to config.
+        """
         metadata = []
         fields = [field for table in self.tables for field in table.fields]
         metatable_fields = MetaTable(fields, "_fields", self.metadata_schema)
         metatable_fields.to_sql()
         metadata.append(metatable_fields)
+        views = [view for scene in self.scenes for view in scene._views]
+        metatable_views = MetaTable(views, "_views", self.metadata_schema)
         return metadata
