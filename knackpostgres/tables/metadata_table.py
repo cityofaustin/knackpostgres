@@ -1,7 +1,6 @@
 from pprint import pprint as print
 from knackpostgres.tables._table import Table
 from knackpostgres.fields.meta_field import MetaField
-from knackpostgres.config.constants import PG_NULL
 from knackpostgres.config.metadata import METADATA_FIELDS
 
 
@@ -66,17 +65,7 @@ class MetaTable(Table):
         for field in data:
             row = self._get_row(field)
             rows.append(row)
-           
-        rows = self._convert_nulls(rows)
 
-        return rows
-
-    def _convert_nulls(self, rows):
-        """ psycopg2 will write None as "None". So we convert NoneTypes to "NULL" """
-        for row in rows:
-            for k, v in row.items():
-                if v == None:
-                    row[k] = PG_NULL
         return rows
 
     def _handle_options(self, field):

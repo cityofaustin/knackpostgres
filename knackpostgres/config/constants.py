@@ -1,5 +1,3 @@
-PG_NULL = "$$NULL$$"
-
 TAB = "    "
 
 FIELD_DEFINITIONS = {

@@ -10,7 +10,6 @@ from knackpostgres.fields.many_to_one_field import ManyToOneField
 from knackpostgres.fields.many_to_many_field import ManyToManyField
 from knackpostgres.utils.data_handlers import DataHandlers
 from knackpostgres.utils.utils import escape_single_quotes, wrap_single_quotes
-from knackpostgres.config.constants import PG_NULL
 
 
 # TODO: you're better than this
@@ -49,8 +48,6 @@ class Translator:
         endpoint = "http://localhost:8080/v1/graphql"
 
         objects = ", ".join(self.graphql)
-    
-        objects = self._replace_nulls(objects)
         
         mutation = TEMPLATE.replace("$objects", objects)
 
@@ -63,13 +60,9 @@ class Translator:
 
         if "errors" in res.text:
             print(mutation)
-            print(res.text)
+            raise Exception(res.text)
 
         return None
-
-
-    def _replace_nulls(self, string):
-        return string.replace(f"\"{PG_NULL}\"", "null")
 
     def _replace_quoted_keys(self, string): 
         KEY_SEARCH = '\"\w+\":'
@@ -94,12 +87,11 @@ class Translator:
         for key, value in row.items():
             data_type = self.field_type_map[key]
 
-            if data_type == "JSON" and value == PG_NULL:
+            if value == None:
                 delete_keys.append(key)
+                continue
 
-            elif data_type.endswith("[]"):
-                if value == PG_NULL:
-                    continue
+            if data_type.endswith("[]"):
 
                 values = []
 
@@ -331,19 +323,9 @@ class KnackTranslator(Translator):
                     continue
 
                 # use the DataHandler to translate the data based on field type
-                try:
-                    handler = DataHandlers(field_type)
-                except ValueError:
-                    # a handler has been explicitly NOT defined for this field type
-                    # field will be dropped
-                    continue
+                handler = DataHandlers(field_type)
 
-                try:
-                    translated_record[field] = handler.handle(record[field])
-
-                except ValueError:
-                    print(f"skipping empty string: {field_type}")
-                    continue
+                translated_record[field] = handler.handle(record[field])
 
             translated_records.append(translated_record)
 

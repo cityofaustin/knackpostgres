@@ -1,6 +1,4 @@
 import json
-from knackpostgres.config.constants import PG_NULL
-
 
 class DataHandlers:
     """ Handlers for translating Knack record values to destination DB values """
@@ -35,31 +33,26 @@ class DataHandlers:
             short_text
             number
             boolean
+            user_roles
+            name
+            address
         """
         if val == "":
-            return PG_NULL
+            return None
 
         return val
 
     def _connection_handler(self, val):
         return val
 
-    def _user_roles_handler(self, val):
-        if val == "":
-            return "{}"
-        return val
-
     def _phone_handler(self, val):
+        if val == "":
+            return None
+
         return val.get("full")
 
     def _currency_handler(self, val):
         return float(val)
-
-    def _name_handler(self, val):
-        return json.dumps(val) if val else "{}"
-
-    def _address_handler(self, val):
-        return json.dumps(val) if val else "{}"
 
     def _file_handler(self, val):
         return val.get("url")
@@ -67,7 +60,7 @@ class DataHandlers:
     def _image_handler(self, val):
         # image will be a url or key/val pair
         if val == []:
-            return PG_NULL
+            return None
 
         try:
             return val.get(
@@ -79,11 +72,14 @@ class DataHandlers:
 
     def _date_time_handler(self, val):
         if val == "":
-            return PG_NULL
+            return None
 
         return val.get("iso_timestamp")
 
     def _timer_handler(self, val):
+        if val == "":
+            return None
+            
         return val["times"][0]["from"]["iso_timestamp"]
 
     def _email_handler(self, val):
